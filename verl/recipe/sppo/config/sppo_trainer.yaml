@@ -16,7 +16,7 @@ actor_rollout_ref:
   rollout:
     name: sglang
     tensor_model_parallel_size: 2
-    gpu_memory_utilization: 0.5
+    gpu_memory_utilization: 0.9
     val_kwargs:
       n: 2  # 2 will trigger validation, 1 will bypass
 

@@ -164,7 +164,7 @@ Actor/Rollout/Reference Policy
       response_length: ${data.max_response_length}
       # for vllm rollout
       dtype: bfloat16 # should align with FSDP
-      gpu_memory_utilization: 0.5
+      gpu_memory_utilization: 0.9
       ignore_eos: False
       enforce_eager: True
       free_cache_engine: True
