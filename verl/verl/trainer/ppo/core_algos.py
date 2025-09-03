@@ -229,7 +229,7 @@ def compute_grpo_outcome_advantage(
         Returns: `(torch.Tensor)`
             shape is (bs, response_length)
     """
-    scores = token_level_rewards.sum(dim=-1)
+    scores = token_level_rewards.sum(dim=-1) # I think I do not need to divide by the response length since only of the entries is non-zero
 
     id2score = defaultdict(list)
     id2mean = {}
@@ -250,9 +250,9 @@ def compute_grpo_outcome_advantage(
                 raise ValueError(f"no score in prompt index: {idx}")
         for i in range(bsz):
             if norm_adv_by_std_in_grpo:
-                scores[i] = (scores[i] - id2mean[index[i]]) / (id2std[index[i]] + epsilon)
+                scores[i] = scores[i] #(scores[i] - id2mean[index[i]]) / (id2std[index[i]] + epsilon)
             else:
-                scores[i] = scores[i] - id2mean[index[i]]
+                scores[i] = scores[i] #- id2mean[index[i]]
         scores = scores.unsqueeze(-1) * response_mask
 
     return scores, scores
@@ -646,21 +646,21 @@ def compute_policy_loss(
     ratio = torch.exp(negative_approx_kl)
     ppo_kl = verl_F.masked_mean(-negative_approx_kl, response_mask)
 
-    pg_losses1 = -advantages * ratio
+    pg_losses1 = -advantages #* ratio
     if cliprange_low is None:
         cliprange_low = cliprange
     if cliprange_high is None:
         cliprange_high = cliprange
-    pg_losses2 = -advantages * torch.clamp(
-        ratio, 1 - cliprange_low, 1 + cliprange_high
-    )  # - clip(ratio, 1-cliprange, 1+cliprange) * A
-    clip_pg_losses1 = torch.maximum(
-        pg_losses1, pg_losses2
-    )  # max(-ratio * A, -clip(ratio, 1-cliprange, 1+cliprange) * A)
+    pg_losses2 = -advantages #* torch.clamp(
+    #    ratio, 1 - cliprange_low, 1 + cliprange_high
+    #)  # - clip(ratio, 1-cliprange, 1+cliprange) * A
+    clip_pg_losses1 = pg_losses1 #torch.maximum(
+    #    pg_losses1, pg_losses2
+    #)  # max(-ratio * A, -clip(ratio, 1-cliprange, 1+cliprange) * A)
     pg_clipfrac = verl_F.masked_mean(torch.gt(pg_losses2, pg_losses1).float(), response_mask)
 
-    pg_losses3 = -advantages * clip_ratio_c
-    clip_pg_losses2 = torch.min(pg_losses3, clip_pg_losses1)
+    pg_losses3 = -advantages #* clip_ratio_c
+    clip_pg_losses2 = pg_losses3 #torch.min(pg_losses3, clip_pg_losses1)
     pg_clipfrac_lower = verl_F.masked_mean(
         torch.gt(clip_pg_losses1, pg_losses3) * (advantages < 0).float(), response_mask
     )

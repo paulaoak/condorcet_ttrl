@@ -348,7 +348,7 @@ class RayPPOTrainer:
         self.ref_in_actor = config.actor_rollout_ref.model.get("lora_rank", 0) > 0
 
         # define in-reward KL control
-        # kl loss control currently not suppoorted
+        # kl loss control currently not supported
         if config.algorithm.use_kl_in_reward:
             self.kl_ctrl_in_reward = core_algos.get_kl_controller(config.algorithm.kl_ctrl)
 
@@ -1135,7 +1135,7 @@ class RayPPOTrainer:
                     # generate a batch
                     with marked_timer("gen", timing_raw, color="red"):
                         if self.config.get("ttrl", {}).get("enable", False):
-                            from verl.trainer.ppo.ttrl_utils import select_top_k_per_prompt, apply_ttrl_gt
+                            from verl.trainer.ppo.condorcet_utils import select_top_k_per_prompt, apply_ttrl_gt
 
                             gen_batch.meta_info["kwargs"] = {"n": self.config.ttrl.n_votes_per_prompt}
                             gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch)
@@ -1196,14 +1196,16 @@ class RayPPOTrainer:
 
                     with marked_timer("reward", timing_raw, color="yellow"):
                         # compute reward model score
-                        if self.use_rm:
-                            reward_tensor = self.rm_wg.compute_rm_score(batch)
-                            batch = batch.union(reward_tensor)
+                        #if self.use_rm:
+                        #    reward_tensor = self.rm_wg.compute_rm_score(batch)
+                        #    batch = batch.union(reward_tensor)
 
                         if self.config.reward_model.launch_reward_fn_async:
                             future_reward = compute_reward_async.remote(batch, self.config, self.tokenizer)
                         else:
                             reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn)
+
+                        #print(f"reward_tensor shape: {reward_tensor.shape}")
 
                     # recompute old_log_probs
                     with marked_timer("old_log_prob", timing_raw, color="blue"):
@@ -1309,7 +1311,7 @@ class RayPPOTrainer:
                         metrics.update(actor_output_metrics)
 
                     if self.config.get("ttrl", {}).get("enable", False):
-                        from verl.trainer.ppo.ttrl_utils import apply_original_gt, compute_ttrl_metrics
+                        from verl.trainer.ppo.condorcet_utils import apply_original_gt, compute_ttrl_metrics
                         batch = apply_original_gt(batch)
                         reward_tensor_original, reward_extra_infos_dict_original = compute_reward(batch, self.reward_fn)
                         batch.batch["token_level_scores_original"] = reward_tensor_original

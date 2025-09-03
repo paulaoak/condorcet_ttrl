@@ -24,7 +24,7 @@ import traceback
 from .math_utils import extract_boxed_answer, is_latex_equal, grade_answer_mathd, grade_answer_sympy, timeout_ours
 
 """
-This code is adapted from Entropy Machanism Recipe (https://github.com/volcengine/verl/tree/main/recipe/entropy/).
+This code is adapted from Entropy Mechanism Recipe (https://github.com/volcengine/verl/tree/main/recipe/entropy/).
 """
 
 def extract_answer(passage: str) -> str:
@@ -105,6 +105,14 @@ def compute_score(model_response, gt_answer, fast=False):
 def reward_func(
     data_source, solution_str, ground_truth, extra_info=None, sandbox_fusion_url=None, concurrent_semaphore=None
 ):
+    if isinstance(ground_truth, (int, float)):
+            return {
+                "score": float(ground_truth),
+                "format_score": 1.0,
+                #"acc": True,   # or False, depending how you want it logged
+                #"extracted_gt": ground_truth,
+                "pred": solution_str,
+            }
     try:
         res = compute_score(solution_str, str(ground_truth))
 
