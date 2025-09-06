@@ -76,7 +76,7 @@ def compute_score(model_response, gt_answer, fast=False):
             "pred": "",
         }
         # return 0.0, 0.0  # Cannot even parse anything.
-    is_correct = False
+    #is_correct = False
     #if isinstance(gt_answer, float) or isinstance(gt_answer, int):
         #gt_answer = str(gt_answer)
     #if isinstance(gt_answer, str):
@@ -87,7 +87,7 @@ def compute_score(model_response, gt_answer, fast=False):
             #is_correct |= grade(model_answer, gt, fast)
     #if is_correct:
     return {
-            "score": gt_answer, #1.0,
+            "score": float(model_answer), #1.0,
             "format_score": 1.0,
             "acc": True,
             "extracted_gt": gt_answer,
@@ -107,10 +107,10 @@ def reward_func(
 ):
     if isinstance(ground_truth, (int, float)):
             return {
-                "score": float(ground_truth),
+                "score": float(solution_str),
                 "format_score": 1.0,
                 #"acc": True,   # or False, depending how you want it logged
-                #"extracted_gt": ground_truth,
+                "extracted_gt": ground_truth,
                 "pred": solution_str,
             }
     try:
