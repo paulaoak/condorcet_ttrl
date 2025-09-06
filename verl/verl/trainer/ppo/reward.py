@@ -1,4 +1,5 @@
-# Copyright 2025 Individual Contributor: Thibaut Barroyer
+# Copyright 2025 Individual Contributor: Thibaut Barroyer.
+# Modifications Copyright 2025 Paula Cordero Encinar and Andrew Duncan
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,8 +57,42 @@ def get_custom_reward_fn(config):
 
     return wrapped_fn
 
+def get_custom_reward_fn_val(config):
+    import importlib.util
+    import sys
 
-def load_reward_manager(config, tokenizer, num_examine, **reward_kwargs):
+    reward_fn_config = config.get("custom_reward_function") or {}
+    file_path = reward_fn_config.get("path")
+    if not file_path:
+        return None
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Reward function file '{file_path}' not found.")
+
+    spec = importlib.util.spec_from_file_location("custom_module", file_path)
+    module = importlib.util.module_from_spec(spec)
+    try:
+        sys.modules["custom_module"] = module
+        spec.loader.exec_module(module)
+    except Exception as e:
+        raise RuntimeError(f"Error loading module from '{file_path}': {e}") from e
+
+    function_name = reward_fn_config.get("name_val")
+    if not hasattr(module, function_name):
+        raise AttributeError(f"Reward function '{function_name}' not found in '{file_path}'.")
+
+    print(f"using customized reward function '{function_name}' from '{file_path}'")
+    raw_fn = getattr(module, function_name)
+
+    reward_kwargs = dict(reward_fn_config.get("reward_kwargs", {}))
+
+    def wrapped_fn(*args, **kwargs):
+        return raw_fn(*args, **kwargs, **reward_kwargs)
+
+    return wrapped_fn
+
+
+def load_reward_manager(config, tokenizer, num_examine, val = False, **reward_kwargs):
     """
     Load and initialize a reward manager based on the configuration.
 
@@ -84,7 +119,11 @@ def load_reward_manager(config, tokenizer, num_examine, **reward_kwargs):
     reward_manager_cls = get_reward_manager_cls(reward_manager_name)
 
     # Try to get a custom reward function based on the configuration
-    compute_score = get_custom_reward_fn(config)
+    if val:
+        compute_score = get_custom_reward_fn_val(config)
+    else:
+        compute_score = get_custom_reward_fn(config)
+
     final_compute_score = compute_score
 
     if compute_score is None:
