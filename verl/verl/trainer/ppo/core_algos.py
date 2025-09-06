@@ -231,29 +231,29 @@ def compute_grpo_outcome_advantage(
     """
     scores = token_level_rewards.sum(dim=-1) # I think I do not need to divide by the response length since only of the entries is non-zero
 
-    id2score = defaultdict(list)
-    id2mean = {}
-    id2std = {}
+    #id2score = defaultdict(list)
+    #id2mean = {}
+    #id2std = {}
 
-    with torch.no_grad():
-        bsz = scores.shape[0]
-        for i in range(bsz):
-            id2score[index[i]].append(scores[i])
-        for idx in id2score:
-            if len(id2score[idx]) == 1:
-                id2mean[idx] = torch.tensor(0.0)
-                id2std[idx] = torch.tensor(1.0)
-            elif len(id2score[idx]) > 1:
-                id2mean[idx] = torch.mean(torch.tensor(id2score[idx]))
-                id2std[idx] = torch.std(torch.tensor([id2score[idx]]))
-            else:
-                raise ValueError(f"no score in prompt index: {idx}")
-        for i in range(bsz):
-            if norm_adv_by_std_in_grpo:
-                scores[i] = scores[i] #(scores[i] - id2mean[index[i]]) / (id2std[index[i]] + epsilon)
-            else:
-                scores[i] = scores[i] #- id2mean[index[i]]
-        scores = scores.unsqueeze(-1) * response_mask
+    #with torch.no_grad(): # We cannot use torch.no_grad() here since we need to backpropagate through the scores
+    bsz = scores.shape[0]
+        #for i in range(bsz):
+        #    id2score[index[i]].append(scores[i])
+        #for idx in id2score:
+        #    if len(id2score[idx]) == 1:
+        #        id2mean[idx] = torch.tensor(0.0)
+        #        id2std[idx] = torch.tensor(1.0)
+        #    elif len(id2score[idx]) > 1:
+        #        id2mean[idx] = torch.mean(torch.tensor(id2score[idx]))
+        #        id2std[idx] = torch.std(torch.tensor([id2score[idx]]))
+        #    else:
+        #        raise ValueError(f"no score in prompt index: {idx}")
+    for i in range(bsz):
+        if norm_adv_by_std_in_grpo:
+            scores[i] = scores[i] #(scores[i] - id2mean[index[i]]) / (id2std[index[i]] + epsilon)
+        else:
+            scores[i] = scores[i] #- id2mean[index[i]]
+    scores = scores.unsqueeze(-1) * response_mask
 
     return scores, scores
 
@@ -647,10 +647,10 @@ def compute_policy_loss(
     ppo_kl = verl_F.masked_mean(-negative_approx_kl, response_mask)
 
     pg_losses1 = -advantages #* ratio
-    if cliprange_low is None:
-        cliprange_low = cliprange
-    if cliprange_high is None:
-        cliprange_high = cliprange
+    #if cliprange_low is None:
+    #    cliprange_low = cliprange
+    #if cliprange_high is None:
+    #    cliprange_high = cliprange
     pg_losses2 = -advantages #* torch.clamp(
     #    ratio, 1 - cliprange_low, 1 + cliprange_high
     #)  # - clip(ratio, 1-cliprange, 1+cliprange) * A
@@ -665,7 +665,7 @@ def compute_policy_loss(
         torch.gt(clip_pg_losses1, pg_losses3) * (advantages < 0).float(), response_mask
     )
 
-    pg_losses = torch.where(advantages < 0, clip_pg_losses2, clip_pg_losses1)
+    pg_losses = clip_pg_losses2 # torch.where(advantages < 0, clip_pg_losses2, clip_pg_losses1)
     pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
 
     return pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower
