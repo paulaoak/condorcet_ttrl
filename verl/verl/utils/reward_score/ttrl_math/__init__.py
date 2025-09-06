@@ -77,7 +77,7 @@ def reward_func(
 ):
     if isinstance(ground_truth, (int, float)):
             return {
-                "score": float(solution_str),
+                "score": ground_truth,
                 "format_score": 1.0,
                 "acc": True,   # or False, depending how you want it logged
                 "extracted_gt": ground_truth,
