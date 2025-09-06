@@ -465,9 +465,11 @@ Customized Reward Function
    custom_reward_function:
      path: null
      name: compute_score
+     name_val: compute_score_val
 
 - ``custom_reward_function.path``: The path to the file containing your customized reward function. If not specified, pre-implemented reward functions will be used.
 - ``custom_reward_function.name`` (Optional) : The name of the reward function within the specified file. Default is 'compute_score'.
+- ``custom_reward_function.name_val`` (Optional) : The name of the reward function within the specified file. Default is 'compute_score_val'.
 
 Algorithm
 ~~~~~~~~~
