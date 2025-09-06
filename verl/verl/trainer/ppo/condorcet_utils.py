@@ -65,8 +65,8 @@ def apply_ttrl_gt(batch, gen_batch_output, n, tokenizer):
         data_item = batch[i]
         score_value = float(signal_noise_ratio_list[i])
         original_gt = data_item.non_tensor_batch["reward_model"]["ground_truth"]
-        data_item.non_tensor_batch["reward_model"]["ground_truth"] = score_value #majority_gt_list[i]
-        data_item.non_tensor_batch["reward_model"]["majority_gt"] = score_value #majority_gt_list[i]
+        data_item.non_tensor_batch["reward_model"]["ground_truth"] = score_value # Return the value that we need to compute the loss function
+        data_item.non_tensor_batch["reward_model"]["majority_gt"] = majority_gt_list[i] # Return the majority vote answer
         data_item.non_tensor_batch["reward_model"]["original_gt"] = original_gt
 
     batch.non_tensor_batch["majority_ratio_list"] = np.array(signal_noise_ratio_list, dtype=float)
