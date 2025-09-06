@@ -91,6 +91,7 @@ python -m verl.trainer.main_ppo \
   algorithm.adv_estimator=$ADVANTAGE \
   custom_reward_function.path="./verl/utils/reward_score/ttrl_math/__init__.py" \
   custom_reward_function.name=reward_func \
+  custom_reward_function.name_val=reward_func_val \
   ttrl.enable=True \
   ttrl.n_votes_per_prompt=$N_VOTES_PER_PROMPT \
   ttrl.n_samples_per_prompt=$N_SAMPLES_PER_PROMPT \

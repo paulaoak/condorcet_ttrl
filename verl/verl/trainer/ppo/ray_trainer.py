@@ -1196,9 +1196,9 @@ class RayPPOTrainer:
 
                     with marked_timer("reward", timing_raw, color="yellow"):
                         # compute reward model score
-                        #if self.use_rm:
-                        #    reward_tensor = self.rm_wg.compute_rm_score(batch)
-                        #    batch = batch.union(reward_tensor)
+                        if self.use_rm:
+                            reward_tensor = self.rm_wg.compute_rm_score(batch)
+                            batch = batch.union(reward_tensor)
 
                         if self.config.reward_model.launch_reward_fn_async:
                             future_reward = compute_reward_async.remote(batch, self.config, self.tokenizer)
@@ -1313,7 +1313,7 @@ class RayPPOTrainer:
                     if self.config.get("ttrl", {}).get("enable", False):
                         from verl.trainer.ppo.condorcet_utils import apply_original_gt, compute_ttrl_metrics
                         batch = apply_original_gt(batch)
-                        reward_tensor_original, reward_extra_infos_dict_original = compute_reward(batch, self.reward_fn)
+                        reward_tensor_original, reward_extra_infos_dict_original = compute_reward(batch, self.val_reward_fn)
                         batch.batch["token_level_scores_original"] = reward_tensor_original
                         # Compute ttrl metrics
                         ttrl_metrics = compute_ttrl_metrics(batch, self.config.ttrl.n_samples_per_prompt)
