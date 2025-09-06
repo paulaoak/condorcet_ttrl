@@ -41,7 +41,7 @@ OUTPUT_DIR="checkpoints/${WANDB_PROJECT}/${MODEL}/${DATE}/${EXPERIMENT}-${ADVANT
 
 # ------------------------------------------------------------
 python -m verl.trainer.main_ppo \
---config-name='ppo_trainer_ttrl.yaml'\
+  --config-name='ppo_trainer_ttrl.yaml' \
   data.train_files=["$DATA_LOCAL_DIR/$TASK/train.parquet"] \
   data.val_files=["$DATA_LOCAL_DIR/$TASK/test.parquet"] \
   data.max_prompt_length=$MAX_PROMPT_LENGTH \
@@ -63,28 +63,28 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.actor.fsdp_config.param_offload=True \
   actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
   actor_rollout_ref.actor.ppo_max_token_len_per_gpu=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
-  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
+  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.name=vllm \
   actor_rollout_ref.rollout.temperature=0.6 \
   actor_rollout_ref.rollout.enforce_eager=False \
   actor_rollout_ref.rollout.free_cache_engine=True \
-  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
+  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
-  actor_rollout_ref.rollout.gpu_memory_utilization=0.6 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.60 \
   actor_rollout_ref.rollout.n=$N_SAMPLES_PER_PROMPT \
   actor_rollout_ref.rollout.val_kwargs.do_sample=True \
   actor_rollout_ref.rollout.val_kwargs.n=$N \
   actor_rollout_ref.rollout.val_kwargs.top_p=0.95 \
   actor_rollout_ref.rollout.val_kwargs.temperature=0.6 \
   actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
-  actor_rollout_ref.rollout.max_num_batched_tokens=4096 \ 
+  actor_rollout_ref.rollout.max_num_batched_tokens=4096 \
   critic.optim.lr=9e-6 \
   critic.model.use_remove_padding=True \
   critic.model.path=$BACKBONE_PATH \
   +critic.model.dtype='bfloat16' \
   critic.model.enable_gradient_checkpointing=True \
-  critic.ppo_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
+  critic.ppo_micro_batch_size_per_gpu=1 \
   critic.model.fsdp_config.param_offload=True \
   critic.model.fsdp_config.optimizer_offload=True \
   algorithm.kl_ctrl.kl_coef=0.00 \
@@ -105,5 +105,5 @@ python -m verl.trainer.main_ppo \
   trainer.max_critic_ckpt_to_keep=0 \
   trainer.default_local_dir=$OUTPUT_DIR \
   trainer.total_epochs=$EPISODE "$@"
-
+ 
 echo "Output directory: $OUTPUT_DIR"
