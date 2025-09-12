@@ -196,7 +196,7 @@ def _prompt_compute_ttrl_metrics(
     ):    
     assert len(majority_reward) == len(gt_reward)
 
-    hit_rate = majority_label   
+    hit_rate = 1.0 if grade(majority_label, gt_label) else 0.0       
     rewards_hit_rate = 0
     for estimate_reward, true_reward in zip(majority_reward, gt_reward):
         if estimate_reward == true_reward:
