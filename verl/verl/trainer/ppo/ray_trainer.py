@@ -15,7 +15,7 @@
 # limitations under the License.
 """
 FSDP PPO Trainer with Ray-based single controller.
-This trainer supports model-agonistic model initialization with huggingface
+This trainer supports model-agnostic model initialization with huggingface
 """
 
 import json
@@ -1204,8 +1204,6 @@ class RayPPOTrainer:
                             future_reward = compute_reward_async.remote(batch, self.config, self.tokenizer)
                         else:
                             reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn)
-
-                        #print(f"reward_tensor shape: {reward_tensor.shape}")
 
                     # recompute old_log_probs
                     with marked_timer("old_log_prob", timing_raw, color="blue"):
