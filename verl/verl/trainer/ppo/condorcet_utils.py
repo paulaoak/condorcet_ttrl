@@ -63,10 +63,10 @@ def apply_ttrl_gt(batch, gen_batch_output, n, tokenizer):
     
     for i in range(num_prompts):
         data_item = batch[i]
-        score_value = float(signal_noise_ratio_list[i])
+        # score_value = float(signal_noise_ratio_list[i])
         original_gt = data_item.non_tensor_batch["reward_model"]["ground_truth"]
-        data_item.non_tensor_batch["reward_model"]["ground_truth"] = score_value # Return the value that we need to compute the loss function
-        data_item.non_tensor_batch["reward_model"]["majority_gt"] = majority_gt_list[i] # Return the majority vote answer
+        data_item.non_tensor_batch["reward_model"]["ground_truth"] = majority_gt_list[i] # Return the values that we need to compute the loss function (it is a list)
+        data_item.non_tensor_batch["reward_model"]["majority_gt"] = majority_gt_list[i][0] # Return the majority vote answer
         data_item.non_tensor_batch["reward_model"]["original_gt"] = original_gt
 
     batch.non_tensor_batch["majority_ratio_list"] = np.array(signal_noise_ratio_list, dtype=float)
@@ -109,16 +109,15 @@ def _majority_vote(model_outputs: List[str]) -> tuple[str, float]:
     counter = Counter(model_answers)
     
     majority_answer, majority_count = counter.most_common(1)[0]
+    runner_up_answer, runner_up_count = counter.most_common(2)[-1] if len(counter) > 1 else (None, 0)
 
-    _, runner_up_count = counter.most_common(2)[-1] if len(counter) > 1 else (None, 0)
+    # signal_noise_ratio_1 = (majority_count - runner_up_count)**2 / (len(model_outputs) *  (majority_count + runner_up_count))
 
-    signal_noise_ratio_1 = (majority_count - runner_up_count)**2 / (len(model_outputs) *  (majority_count + runner_up_count))
-
-    signal_noise_ratio_2 = (2 * majority_count + runner_up_count - len(model_outputs))**2 / (len(model_outputs) *  (len(model_outputs) - runner_up_count))
+    # signal_noise_ratio_2 = (2 * majority_count + runner_up_count - len(model_outputs))**2 / (len(model_outputs) *  (len(model_outputs) - runner_up_count))
     
-    signal_noise_ratio = signal_noise_ratio_1 + signal_noise_ratio_2
+    signal_noise_ratio = compute_SNR(majority_count, runner_up_count, len(model_outputs))
 
-    return majority_answer, signal_noise_ratio
+    return [majority_answer, runner_up_answer, majority_count, runner_up_count, len(model_outputs)], signal_noise_ratio
 
 
 # === Metrics Computation ===
@@ -211,3 +210,13 @@ def _prompt_compute_ttrl_metrics(
         f"pass@{len(majority_reward)}": 1.0 if sum(gt_reward) >= 1 else 0.0,
     }
     return ttrl_metric
+
+# === Auxiliary Function ===
+
+def compute_SNR(majority_count, runner_up_count, n_total):
+
+    signal_noise_ratio_1 = (majority_count - runner_up_count)**2 / (n_total *  (majority_count + runner_up_count))
+
+    signal_noise_ratio_2 = (2 * majority_count + runner_up_count - n_total)**2 / (n_total *  (n_total - runner_up_count))
+    
+    return signal_noise_ratio_1 + signal_noise_ratio_2
