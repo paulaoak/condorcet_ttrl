@@ -52,39 +52,73 @@ def simplify_expression_string(expression_string: str) -> str:
             return expression_string
         except Exception as e:
             return expression_string
-
+        
 def compute_score(model_response, gt_answer, fast=False):
     model_answer = extract_answer(model_response)
+
+    majority_vote = gt_answer[0]
+    runner_up = gt_answer[1]
+    majority_count = float(gt_answer[2])
+    runner_up_count = float(gt_answer[3])
+    total_count = float(gt_answer[4])
 
     if model_answer is None:
         return {
             "score": 0.0,
             "format_score": 0.0,
             "acc": False,
-            "extracted_gt": gt_answer,
+            "extracted_gt": majority_vote,
             "pred": "",
         }
-    return {
-            "score": float(model_answer), #1.0,
-            "format_score": 1.0,
+        # return 0.0, 0.0  # Cannot even parse anything.
+    is_correct_majority = False
+    is_correct_runner_up = False
+
+    if isinstance(majority_vote, float) or isinstance(majority_vote, int):
+        majority_vote = str(majority_vote)
+
+    if isinstance(runner_up, float) or isinstance(runner_up, int):
+        runner_up = str(runner_up)
+
+    if isinstance(majority_vote, str):
+        is_correct_majority = grade(model_answer, majority_vote, fast)
+    if isinstance(runner_up, str):
+        is_correct_runner_up = grade(model_answer, runner_up, fast)
+       
+    if is_correct_majority:
+        score = compute_SNR(majority_count, runner_up_count, total_count) - compute_SNR(majority_count - 1, runner_up_count, total_count - 1)
+        return {
+            "score": score,
+            "format_score": score,
             "acc": True,
-            "extracted_gt": gt_answer,
+            "extracted_gt": majority_vote,
+            "pred": model_answer,
+        }
+    
+    elif is_correct_runner_up:
+        score = compute_SNR(majority_count, runner_up_count, total_count) - compute_SNR(majority_count, runner_up_count - 1, total_count - 1)
+        return {
+            "score": score,
+            "format_score": score,
+            "acc": False,
+            "extracted_gt": majority_vote,
+            "pred": model_answer,
+        }
+    else:
+        score = compute_SNR(majority_count, runner_up_count, total_count) - compute_SNR(majority_count, runner_up_count, total_count - 1)
+        return {
+            "score": score,
+            "format_score": score,
+            "acc": False,
+            "extracted_gt": majority_vote,
             "pred": model_answer,
         }
 
 def reward_func(
     data_source, solution_str, ground_truth, extra_info=None, sandbox_fusion_url=None, concurrent_semaphore=None
 ):
-    if isinstance(ground_truth, (int, float)):
-            return {
-                "score": ground_truth,
-                "format_score": 1.0,
-                "acc": True,   # or False, depending how you want it logged
-                "extracted_gt": ground_truth,
-                "pred": solution_str,
-            }
     try:
-        res = compute_score(solution_str, str(ground_truth))
+        res = compute_score(solution_str, ground_truth)
 
         if isinstance(res, dict):
             return res
@@ -96,8 +130,6 @@ def reward_func(
         print(f"[ERROR] Error in process_completion for task : {str(e)}")
         traceback.print_exc()
         raise
-
-
 
 def compute_score_val(model_response, gt_answer, fast=False):
     model_answer = extract_answer(model_response)
@@ -153,3 +185,14 @@ def reward_func_val(
         print(f"[ERROR] Error in process_completion for task : {str(e)}")
         traceback.print_exc()
         raise
+
+
+# === Auxiliary Function ===
+
+def compute_SNR(majority_count, runner_up_count, n_total):
+
+    signal_noise_ratio_1 = (majority_count - runner_up_count)**2 / (n_total *  (majority_count + runner_up_count))
+
+    signal_noise_ratio_2 = (2 * majority_count + runner_up_count - n_total)**2 / (n_total *  (n_total - runner_up_count))
+    
+    return signal_noise_ratio_1 + signal_noise_ratio_2
