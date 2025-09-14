@@ -2,6 +2,7 @@
 #export VLLM_ATTENTION_BACKEND=XFORMERS
 unset VLLM_ATTENTION_BACKEND
 export VLLM_USE_V1=1
+export WANDB_API_KEY=7dbc60219e2e293affe5503a11b96fbc218bf5cb
 
 # ------------------------------------------------------------
 
@@ -28,13 +29,13 @@ N_SAMPLES_PER_PROMPT=32
 MINI_BATCH_SIZE=1
 MICRO_BATCH_SIZE=2
 
-DATA_LOCAL_DIR="path/to/TTRL/verl/data"
-BACKBONE_PATH="path/to/${BACKBONE}"
+DATA_LOCAL_DIR="data"
+BACKBONE_PATH="Qwen/Qwen2.5-Math-1.5B"
 
 MODEL="${TASK}-${BACKBONE}"
 EXPERIMENT="TTRL-Len@${K}k"
 
-WANDB_PROJECT="TTRL-verl"
+WANDB_PROJECT="TTRL-verl-AIME-SNR"
 LOG_NAME="${DATE}-${EXPERIMENT}-${MODEL}-${ADVANTAGE}"
 OUTPUT_DIR="checkpoints/${WANDB_PROJECT}/${MODEL}/${DATE}/${EXPERIMENT}-${ADVANTAGE}-${TIME_TAG}"
 
@@ -50,6 +51,7 @@ python -m verl.trainer.main_ppo \
   data.truncation='error' \
   actor_rollout_ref.model.path=$BACKBONE_PATH \
   actor_rollout_ref.model.enable_gradient_checkpointing=True \
+  +actor_rollout_ref.model.dtype='bfloat16' \
   actor_rollout_ref.model.use_remove_padding=True \
   actor_rollout_ref.actor.ppo_mini_batch_size=$MINI_BATCH_SIZE \
   actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
@@ -57,18 +59,18 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.actor.optim.lr=5e-7 \
   actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.03 \
   actor_rollout_ref.actor.optim.warmup_style='cosine' \
-  actor_rollout_ref.actor.fsdp_config.param_offload=False \
-  actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
+  actor_rollout_ref.actor.fsdp_config.param_offload=True \
+  actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
   actor_rollout_ref.actor.ppo_max_token_len_per_gpu=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.name=vllm \
   actor_rollout_ref.rollout.temperature=1.0 \
   actor_rollout_ref.rollout.enforce_eager=False \
-  actor_rollout_ref.rollout.free_cache_engine=False \
+  actor_rollout_ref.rollout.free_cache_engine=True \
   actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
-  actor_rollout_ref.rollout.gpu_memory_utilization=0.8 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.70 \
   actor_rollout_ref.rollout.n=$N_SAMPLES_PER_PROMPT \
   actor_rollout_ref.rollout.val_kwargs.do_sample=True \
   actor_rollout_ref.rollout.val_kwargs.n=$N \
@@ -79,14 +81,16 @@ python -m verl.trainer.main_ppo \
   critic.optim.lr=9e-6 \
   critic.model.use_remove_padding=True \
   critic.model.path=$BACKBONE_PATH \
+  +critic.model.dtype='bfloat16' \
   critic.model.enable_gradient_checkpointing=True \
   critic.ppo_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
-  critic.model.fsdp_config.param_offload=False \
-  critic.model.fsdp_config.optimizer_offload=False \
+  critic.model.fsdp_config.param_offload=True \
+  critic.model.fsdp_config.optimizer_offload=True \
   algorithm.kl_ctrl.kl_coef=0.00 \
   algorithm.adv_estimator=$ADVANTAGE \
   custom_reward_function.path="./verl/utils/reward_score/ttrl_math/__init__.py" \
   custom_reward_function.name=reward_func \
+  +custom_reward_function.name_val=reward_func_val \
   ttrl.enable=True \
   ttrl.n_votes_per_prompt=$N_VOTES_PER_PROMPT \
   ttrl.n_samples_per_prompt=$N_SAMPLES_PER_PROMPT \
