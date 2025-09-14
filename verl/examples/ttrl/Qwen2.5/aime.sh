@@ -13,8 +13,8 @@ TASK="AIME-TTT"
 BACKBONE="Qwen2.5-7B"
 ADVANTAGE="grpo"
 
-K=2
-MAX_PROMPT_LENGTH=384
+K=3
+MAX_PROMPT_LENGTH=512
 MAX_RESPONSE_LENGTH=$((1024 * $K))
 if [ "$K" -gt 8 ]; then
   N=4
@@ -24,10 +24,10 @@ fi
 
 EPISODE=80
 DATA_TRAIN_BATCH_SIZE=8
-N_VOTES_PER_PROMPT=32
+N_VOTES_PER_PROMPT=64
 N_SAMPLES_PER_PROMPT=32
 MINI_BATCH_SIZE=1
-MICRO_BATCH_SIZE=1
+MICRO_BATCH_SIZE=2
 
 DATA_LOCAL_DIR="data"
 BACKBONE_PATH="Qwen/Qwen2.5-7B"   #"path/to/${BACKBONE}"
@@ -63,35 +63,35 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.actor.fsdp_config.param_offload=True \
   actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
   actor_rollout_ref.actor.ppo_max_token_len_per_gpu=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
-  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
+  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=2 \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.name=vllm \
   actor_rollout_ref.rollout.temperature=0.6 \
   actor_rollout_ref.rollout.enforce_eager=False \
   actor_rollout_ref.rollout.free_cache_engine=True \
-  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
+  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=2 \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
-  actor_rollout_ref.rollout.gpu_memory_utilization=0.60 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.70 \
   actor_rollout_ref.rollout.n=$N_SAMPLES_PER_PROMPT \
   actor_rollout_ref.rollout.val_kwargs.do_sample=True \
   actor_rollout_ref.rollout.val_kwargs.n=$N \
   actor_rollout_ref.rollout.val_kwargs.top_p=0.95 \
   actor_rollout_ref.rollout.val_kwargs.temperature=0.6 \
   actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
-  actor_rollout_ref.rollout.max_num_batched_tokens=4096 \
+  actor_rollout_ref.rollout.max_num_batched_tokens=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
   critic.optim.lr=9e-6 \
   critic.model.use_remove_padding=True \
   critic.model.path=$BACKBONE_PATH \
   +critic.model.dtype='bfloat16' \
   critic.model.enable_gradient_checkpointing=True \
-  critic.ppo_micro_batch_size_per_gpu=1 \
+  critic.ppo_micro_batch_size_per_gpu=2 \
   critic.model.fsdp_config.param_offload=True \
   critic.model.fsdp_config.optimizer_offload=True \
   algorithm.kl_ctrl.kl_coef=0.00 \
   algorithm.adv_estimator=$ADVANTAGE \
   custom_reward_function.path="./verl/utils/reward_score/ttrl_math/__init__.py" \
   custom_reward_function.name=reward_func \
-  custom_reward_function.name_val=reward_func_val \
+  +custom_reward_function.name_val=reward_func_val \
   ttrl.enable=True \
   ttrl.n_votes_per_prompt=$N_VOTES_PER_PROMPT \
   ttrl.n_samples_per_prompt=$N_SAMPLES_PER_PROMPT \
