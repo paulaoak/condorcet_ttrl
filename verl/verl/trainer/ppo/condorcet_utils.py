@@ -217,6 +217,6 @@ def compute_SNR(majority_count, runner_up_count, n_total):
 
     signal_noise_ratio_1 = (majority_count - runner_up_count)**2 / (n_total *  (majority_count + runner_up_count))
 
-    signal_noise_ratio_2 = (2 * majority_count + runner_up_count - n_total)**2 / (n_total *  (n_total - runner_up_count))
+    # signal_noise_ratio_2 = (2 * majority_count + runner_up_count - n_total)**2 / (n_total *  (n_total - runner_up_count))
     
-    return signal_noise_ratio_1 + signal_noise_ratio_2
+    return signal_noise_ratio_1 # + signal_noise_ratio_2
