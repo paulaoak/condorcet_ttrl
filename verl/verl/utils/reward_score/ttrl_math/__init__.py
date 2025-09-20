@@ -9,6 +9,8 @@ from latex2sympy2_extended import latex2sympy
 from sympy import simplify
 from sympy.parsing.sympy_parser import parse_expr
 import traceback
+import torch
+from collections import Counter
 
 from .math_utils import extract_boxed_answer, is_latex_equal, grade_answer_mathd, grade_answer_sympy, timeout_ours
 
@@ -52,6 +54,8 @@ def simplify_expression_string(expression_string: str) -> str:
             return expression_string
         except Exception as e:
             return expression_string
+        
+# === Training score for SNR reward ===
         
 def compute_score(model_response, gt_answer, fast=False):
     model_answer = extract_answer(model_response)
@@ -131,6 +135,77 @@ def reward_func(
         traceback.print_exc()
         raise
 
+# === Training score for Entropy reward ===
+def compute_score_entropy(model_response, gt_answer, fast=False):
+    model_answer = extract_answer(model_response)
+
+    majority_vote = gt_answer[0]
+    counts = gt_answer[2]
+    counts_copy = counts.copy()
+
+    if model_answer is None:
+        return {
+            "score": 0.0,
+            "format_score": 0.0,
+            "acc": False,
+            "extracted_gt": majority_vote,
+            "pred": "",
+        }
+        # return 0.0, 0.0  # Cannot even parse anything.
+
+
+    if isinstance(majority_vote, float) or isinstance(majority_vote, int):
+        majority_vote = str(majority_vote)
+
+    is_correct = False
+    if isinstance(majority_vote, str):
+        is_correct = grade(model_answer, majority_vote, fast)
+    elif isinstance(majority_vote, list):
+        is_correct = False
+        for gt in majority_vote:
+            is_correct |= grade(model_answer, gt, fast)
+
+    negative_entropy = compute_entropy(counts_copy)
+    counts_copy.subtract({model_answer: 1})
+    advantage_entropy = negative_entropy - compute_entropy(counts_copy)
+    
+    if is_correct:
+        return {
+            "score": advantage_entropy,
+            "format_score": 1.0,
+            "acc": True,
+            "extracted_gt": majority_vote,
+            "pred": model_answer,
+        }
+    
+    else:
+        return {
+            "score": advantage_entropy,
+            "format_score": 1.0,
+            "acc": False,
+            "extracted_gt": majority_vote,
+            "pred": model_answer,
+        }
+
+def reward_func_entropy(
+    data_source, solution_str, ground_truth, extra_info=None, sandbox_fusion_url=None, concurrent_semaphore=None
+):
+    try:
+        res = compute_score_entropy(solution_str, ground_truth)
+
+        if isinstance(res, dict):
+            return res
+        elif isinstance(res, (int, float, bool)):
+            return float(res)
+        else:
+            return float(res[0])
+    except Exception as e:
+        print(f"[ERROR] Error in process_completion for task : {str(e)}")
+        traceback.print_exc()
+        raise
+
+# === Validation score ===
+
 def compute_score_val(model_response, gt_answer, fast=False):
     model_answer = extract_answer(model_response)
 
@@ -193,6 +268,11 @@ def compute_SNR(majority_count, runner_up_count, n_total):
 
     signal_noise_ratio_1 = (majority_count - runner_up_count)**2 / (n_total *  (majority_count + runner_up_count))
 
-    # signal_noise_ratio_2 = (2 * majority_count + runner_up_count - n_total)**2 / (n_total *  (n_total - runner_up_count))
-    
-    return signal_noise_ratio_1 # + signal_noise_ratio_2
+    return signal_noise_ratio_1 
+
+def compute_entropy(counts, alpha = 0.5):
+
+    n_total = sum(N for N in counts.values())
+    entropy = sum((N+alpha)/(n_total+alpha) * torch.log((N+alpha)/(n_total+alpha)) for N in counts.values() if N > 0)
+
+    return entropy
