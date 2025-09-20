@@ -40,13 +40,22 @@ def bernstein(n, p_0 = 0.38, p_1 = 0.35, p_2 = 0.27):
     return bernstein_individual(n, p_0 = p_0, p_1 = p_1) + bernstein_individual(n, p_0 = p_0, p_1 = p_2)
 
 
-##################### CHERNOFF-MARKOV W/ BAHADUR-RAO CORRECTION #####################
+##################### CHERNOFF-MARKOV BOUND #####################
 def chernoff_markov_individual(n, p_0 = 0.38, p_1 = 0.35):
-    prefactor = 1 / np.sqrt(np.pi *n * (p_0+p_1)) * (1-p_1)/(p_0 - p_1) * 2
-    return prefactor * np.exp(n * np.log(2 * np.sqrt(p_0 * p_1) + 1 - p_0 - p_1))
+    return np.exp(n * np.log(2 * np.sqrt(p_0 * p_1) + 1 - p_0 - p_1))
 
 def chernoff_markov(n, p_0 = 0.38, p_1 = 0.35, p_2 = 0.27):
     return chernoff_markov_individual(n, p_0 = p_0, p_1 = p_1) + chernoff_markov_individual(n, p_0 = p_0, p_1 = p_2)
+
+
+##################### CHERNOFF-MARKOV W/ BAHADUR-RAO LATTICE PREFACTOR #####################
+def chernoff_markov_individual_correction(n, p_0 = 0.38, p_1 = 0.35):
+    sigma = 2 * np.sqrt(p_0 * p_1) / (1-(np.sqrt(p_0)-np.sqrt(p_1))**2)
+    prefactor = np.sqrt(2 * np.pi * n * sigma) * (1-np.sqrt(p_1/p_0)) 
+    return np.exp(n * np.log(2 * np.sqrt(p_0 * p_1) + 1 - p_0 - p_1)) / prefactor
+
+def chernoff_markov_correction(n, p_0 = 0.38, p_1 = 0.35, p_2 = 0.27):
+    return chernoff_markov_individual_correction(n, p_0 = p_0, p_1 = p_1)
 
 
 ##################### EXACT MULTINOMIAL ERROR #####################
@@ -122,6 +131,7 @@ def main():
     hoeffding_list = np.array([hoeffding(int(n)) for n in n_list])
     bernstein_list = np.array([bernstein(int(n)) for n in n_list])
     chernoff_markov_list = np.array([chernoff_markov(int(n)) for n in n_list])
+    chernoff_markov_correction_list = np.array([chernoff_markov_correction(int(n)) for n in n_list])
     multinomial_error_list = np.array([multinomial_error(int(n)) for n in n_list])
     corrections_clt_list = np.array([clt_correction(int(n)) for n in n_list])
 
@@ -131,8 +141,9 @@ def main():
     plt.plot(n_list, hoeffding_list, marker='s', label='Hoeffding')
     plt.plot(n_list, bernstein_list, marker='^', label='Bernstein')
     plt.plot(n_list, chernoff_markov_list, marker='x', label='Chernoff-Markov')
+    plt.plot(n_list, chernoff_markov_correction_list, marker='v', label='Chernoff-Markov + B-R')
     plt.plot(n_list, multinomial_error_list, marker='d', label='Multinomial Exact')
-    plt.plot(n_list, corrections_clt_list, marker='+', label='CLT_CC_BE')
+    plt.plot(n_list, corrections_clt_list, marker='+', label='CLT + CC + BE')
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Panel size n')
@@ -141,7 +152,7 @@ def main():
     plt.legend()
     plt.grid(True, which="both", ls='--', lw=0.5)
     plt.tight_layout()
-    plt.savefig("empirical_vs_theoreticalbounds.png", dpi=300)  # High resolution
+    plt.savefig("empirical_vs_theoreticalbounds_2.png", dpi=300)  # High resolution
 
     return 
         
