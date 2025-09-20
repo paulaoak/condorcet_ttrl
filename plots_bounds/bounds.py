@@ -141,7 +141,7 @@ def main():
     plt.plot(n_list, hoeffding_list, marker='s', label='Hoeffding')
     plt.plot(n_list, bernstein_list, marker='^', label='Bernstein')
     plt.plot(n_list, chernoff_markov_list, marker='x', label='Chernoff-Markov')
-    plt.plot(n_list, chernoff_markov_correction_list, marker='v', label='Chernoff-Markov + B-R')
+    plt.plot(n_list, chernoff_markov_correction_list, marker='v', label='Chernoff-Markov + BR')
     plt.plot(n_list, multinomial_error_list, marker='d', label='Multinomial Exact')
     plt.plot(n_list, corrections_clt_list, marker='+', label='CLT + CC + BE')
     plt.xscale('log')
@@ -152,7 +152,7 @@ def main():
     plt.legend()
     plt.grid(True, which="both", ls='--', lw=0.5)
     plt.tight_layout()
-    plt.savefig("empirical_vs_theoreticalbounds_2.png", dpi=300)  # High resolution
+    plt.savefig("empirical_vs_theoreticalbounds.png", dpi=300)  # High resolution
 
     return 
         
