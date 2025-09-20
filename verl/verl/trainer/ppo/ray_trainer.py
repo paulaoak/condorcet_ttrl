@@ -297,8 +297,6 @@ class RayPPOTrainer:
         processor=None,
         reward_fn=None,
         val_reward_fn=None,
-        snr_based_reward=False,
-        entropy_based_reward=False,
         train_dataset: Optional[Dataset] = None,
         val_dataset: Optional[Dataset] = None,
         collate_fn=None,
@@ -331,8 +329,8 @@ class RayPPOTrainer:
         self.config = config
         self.reward_fn = reward_fn
         self.val_reward_fn = val_reward_fn
-        self.snr_based_reward = snr_based_reward    
-        self.entropy_based_reward = entropy_based_reward
+        self.snr_based_reward = self.config.reward.snr_based_reward    
+        self.entropy_based_reward = self.config.reward.entropy_based_reward
 
         self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
         assert self.hybrid_engine, "Currently, only support hybrid engine"
@@ -1328,7 +1326,7 @@ class RayPPOTrainer:
                             ttrl_metrics = compute_ttrl_metrics(batch, self.config.ttrl.n_samples_per_prompt)
                         elif self.entropy_based_reward:
                             ttrl_metrics = compute_ttrl_metrics_entropy(batch, self.config.ttrl.n_samples_per_prompt)
-                            
+
                         for key, value in ttrl_metrics.items():
                                 metrics.update({f"train/{key}": value})
 
