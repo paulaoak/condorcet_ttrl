@@ -93,7 +93,7 @@ def compute_score(model_response, gt_answer, fast=False):
         score = compute_SNR(majority_count, runner_up_count, total_count) - compute_SNR(majority_count - 1, runner_up_count, total_count - 1)
         return {
             "score": score,
-            "format_score": score,
+            "format_score": 1.0,
             "acc": True,
             "extracted_gt": majority_vote,
             "pred": model_answer,
@@ -103,7 +103,7 @@ def compute_score(model_response, gt_answer, fast=False):
         score = compute_SNR(majority_count, runner_up_count, total_count) - compute_SNR(majority_count, runner_up_count - 1, total_count - 1)
         return {
             "score": score,
-            "format_score": score,
+            "format_score": 1.0,
             "acc": False,
             "extracted_gt": majority_vote,
             "pred": model_answer,
@@ -112,7 +112,7 @@ def compute_score(model_response, gt_answer, fast=False):
         score = compute_SNR(majority_count, runner_up_count, total_count) - compute_SNR(majority_count, runner_up_count, total_count - 1)
         return {
             "score": score,
-            "format_score": score,
+            "format_score": 1.0,
             "acc": False,
             "extracted_gt": majority_vote,
             "pred": model_answer,
