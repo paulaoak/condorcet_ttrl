@@ -297,6 +297,8 @@ class RayPPOTrainer:
         processor=None,
         reward_fn=None,
         val_reward_fn=None,
+        snr_based_reward=False,
+        entropy_based_reward=False,
         train_dataset: Optional[Dataset] = None,
         val_dataset: Optional[Dataset] = None,
         collate_fn=None,
@@ -329,6 +331,8 @@ class RayPPOTrainer:
         self.config = config
         self.reward_fn = reward_fn
         self.val_reward_fn = val_reward_fn
+        self.snr_based_reward = snr_based_reward    
+        self.entropy_based_reward = entropy_based_reward
 
         self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
         assert self.hybrid_engine, "Currently, only support hybrid engine"
@@ -1136,13 +1140,18 @@ class RayPPOTrainer:
                     with marked_timer("gen", timing_raw, color="red"):
                         if self.config.get("ttrl", {}).get("enable", False):
                             from verl.trainer.ppo.condorcet_utils import select_top_k_per_prompt, apply_ttrl_gt
+                            from verl.trainer.ppo.condorcet_entropy_utils import apply_ttrl_gt_entropy
 
                             gen_batch.meta_info["kwargs"] = {"n": self.config.ttrl.n_votes_per_prompt}
                             gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch)
 
                             assert len(gen_batch_output) == len(batch) * self.config.ttrl.n_votes_per_prompt
 
-                            batch = apply_ttrl_gt(batch, gen_batch_output, self.config.ttrl.n_votes_per_prompt, self.tokenizer)
+                            if self.snr_based_reward:
+                                batch = apply_ttrl_gt(batch, gen_batch_output, self.config.ttrl.n_votes_per_prompt, self.tokenizer)
+                            elif self.entropy_based_reward:
+                                batch = apply_ttrl_gt_entropy(batch, gen_batch_output, self.config.ttrl.n_votes_per_prompt, self.tokenizer)
+                            
                             gen_batch_output = select_top_k_per_prompt(gen_batch_output, self.config.ttrl.n_votes_per_prompt, self.config.ttrl.n_samples_per_prompt)
 
                             assert len(gen_batch_output) == len(batch) * self.config.ttrl.n_samples_per_prompt
@@ -1310,11 +1319,16 @@ class RayPPOTrainer:
 
                     if self.config.get("ttrl", {}).get("enable", False):
                         from verl.trainer.ppo.condorcet_utils import apply_original_gt, compute_ttrl_metrics
+                        from verl.trainer.ppo.condorcet_entropy_utils import compute_ttrl_metrics_entropy
                         batch = apply_original_gt(batch)
                         reward_tensor_original, reward_extra_infos_dict_original = compute_reward(batch, self.val_reward_fn)
                         batch.batch["token_level_scores_original"] = reward_tensor_original
                         # Compute ttrl metrics
-                        ttrl_metrics = compute_ttrl_metrics(batch, self.config.ttrl.n_samples_per_prompt)
+                        if self.snr_based_reward:
+                            ttrl_metrics = compute_ttrl_metrics(batch, self.config.ttrl.n_samples_per_prompt)
+                        elif self.entropy_based_reward:
+                            ttrl_metrics = compute_ttrl_metrics_entropy(batch, self.config.ttrl.n_samples_per_prompt)
+                            
                         for key, value in ttrl_metrics.items():
                                 metrics.update({f"train/{key}": value})
 
