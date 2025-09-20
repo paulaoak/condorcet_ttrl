@@ -36,7 +36,7 @@ def apply_original_gt(batch):
     return batch
 
 
-def apply_ttrl_gt(batch, gen_batch_output, n, tokenizer):
+def apply_ttrl_gt_entropy(batch, gen_batch_output, n, tokenizer):
     """
     Apply the majority vote ground truth to the batch.
     """
@@ -57,7 +57,7 @@ def apply_ttrl_gt(batch, gen_batch_output, n, tokenizer):
             response_str = tokenizer.decode(valid_response_ids, skip_special_tokens=True)
             model_outputs.append(response_str)
 
-    majority_gt_list, entropy_list = _batch_majority_vote(model_outputs, n)
+    majority_gt_list, entropy_list = _batch_majority_vote_entropy(model_outputs, n)
     
     assert len(batch) == len(majority_gt_list), "batch length must be equal to the number of model outputs"
     
@@ -72,7 +72,7 @@ def apply_ttrl_gt(batch, gen_batch_output, n, tokenizer):
     return batch
 
 
-def _batch_majority_vote(model_outputs: List[str], n: int) -> tuple[List[str], List[float]]:
+def _batch_majority_vote_entropy(model_outputs: List[str], n: int) -> tuple[List[str], List[float]]:
     """
     Used to generate the ground truth for TTRL.
     Input:
@@ -89,7 +89,7 @@ def _batch_majority_vote(model_outputs: List[str], n: int) -> tuple[List[str], L
     for i in range(n_prompts):
         prompt_outputs = model_outputs[i * n:(i + 1) * n]
 
-        prompt_majority_gt, prompt_entropy = _majority_vote(prompt_outputs)
+        prompt_majority_gt, prompt_entropy = _majority_vote_entropy(prompt_outputs)
 
         majority_gt_list.append(prompt_majority_gt)
         entropy_list.append(prompt_entropy)
@@ -97,7 +97,7 @@ def _batch_majority_vote(model_outputs: List[str], n: int) -> tuple[List[str], L
     return majority_gt_list, entropy_list
 
 
-def _majority_vote(model_outputs: List[str]) -> tuple[str, float]:
+def _majority_vote_entropy(model_outputs: List[str]) -> tuple[str, float]:
     assert len(model_outputs) > 0
     model_answers = [extract_answer(generated_text) for generated_text in model_outputs]
     model_answers = [answer for answer in model_answers if answer is not None]
@@ -117,7 +117,7 @@ def _majority_vote(model_outputs: List[str]) -> tuple[str, float]:
 # === Metrics Computation ===
 
 
-def compute_ttrl_metrics(batch, n):
+def compute_ttrl_metrics_entropy(batch, n):
     """
     Compute the TTRL metrics.
     """
@@ -139,7 +139,7 @@ def compute_ttrl_metrics(batch, n):
         majority_label.append(data_item.non_tensor_batch["reward_model"]["majority_gt"])
         gt_label.append(data_item.non_tensor_batch["reward_model"]["original_gt"]) 
 
-    ttrl_metrics = _batch_compute_ttrl_metrics(majority_reward, gt_reward, majority_label, gt_label, n=n)
+    ttrl_metrics = _batch_compute_ttrl_metrics_entropy(majority_reward, gt_reward, majority_label, gt_label, n=n)
     negative_entropy_list = batch.non_tensor_batch["negative_entropy_list"]
     negative_entropy = sum(negative_entropy_list) / len(negative_entropy_list)
     ttrl_metrics["negative_entropy"] = negative_entropy
@@ -147,7 +147,7 @@ def compute_ttrl_metrics(batch, n):
     return ttrl_metrics
 
 
-def _batch_compute_ttrl_metrics(
+def _batch_compute_ttrl_metrics_entropy(
     majority_reward: List[float],
     gt_reward: List[float],
     majority_label: List[str],
@@ -173,7 +173,7 @@ def _batch_compute_ttrl_metrics(
         prompt_majority_label = prompt_majority_label[0]
         prompt_gt_label = prompt_gt_label[0]
 
-        ttrl_metric = _prompt_compute_ttrl_metrics(prompt_majority_reward, prompt_gt_reward, prompt_majority_label, prompt_gt_label)
+        ttrl_metric = _prompt_compute_ttrl_metrics_entropy(prompt_majority_reward, prompt_gt_reward, prompt_majority_label, prompt_gt_label)
         ttrl_metrics.append(ttrl_metric)
 
     # Compute the average metrics
@@ -181,7 +181,7 @@ def _batch_compute_ttrl_metrics(
 
     return ttrl_metrics
 
-def _prompt_compute_ttrl_metrics(
+def _prompt_compute_ttrl_metrics_entropy(
     majority_reward: List[float],
     gt_reward: List[float],
     majority_label: str,
