@@ -9,8 +9,8 @@ from latex2sympy2_extended import latex2sympy
 from sympy import simplify
 from sympy.parsing.sympy_parser import parse_expr
 import traceback
-import torch
 from collections import Counter
+import numpy as np
 
 from .math_utils import extract_boxed_answer, is_latex_equal, grade_answer_mathd, grade_answer_sympy, timeout_ours
 
@@ -273,6 +273,6 @@ def compute_SNR(majority_count, runner_up_count, n_total):
 def compute_entropy(counts, alpha = 0.5):
 
     n_total = sum(N for N in counts.values())
-    entropy = sum((N+alpha)/(n_total+alpha) * torch.log((N+alpha)/(n_total+alpha)) for N in counts.values() if N > 0)
+    entropy = sum((N+alpha)/(n_total+alpha) * np.log((N+alpha)/(n_total+alpha)) for N in counts.values() if N > 0)
 
     return entropy

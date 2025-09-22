@@ -210,6 +210,6 @@ def _prompt_compute_ttrl_metrics_entropy(
 def compute_entropy(counts, alpha = 0.5):
 
     n_total = sum(N for N in counts.values())
-    entropy = sum((N+alpha)/(n_total+alpha) * torch.log((N+alpha)/(n_total+alpha)) for N in counts.values() if N > 0)
+    entropy = sum((N+alpha)/(n_total+alpha) * np.log((N+alpha)/(n_total+alpha)) for N in counts.values() if N > 0)
 
     return entropy
