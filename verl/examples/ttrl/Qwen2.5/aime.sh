@@ -12,6 +12,22 @@ TIME_TAG=$(date +%H%M%S)
 TASK="AIME-TTT"
 BACKBONE="Qwen2.5-7B"
 ADVANTAGE="grpo"
+REWARD_snr=True
+REWARD_entropy=False
+
+if [  "$REWARD_snr" = true ] && [ "$REWARD_entropy" = true ]; then
+  echo "Please enable only one reward function."
+  exit 1
+fi
+
+if [ "$REWARD_snr" = true ]; then
+  REWARD_FUNC=reward_func
+elif [ "$REWARD_entropy" = true ]; then
+  REWARD_FUNC=reward_func_entropy
+else
+  echo "Please enable at least one reward function."
+  exit 1
+fi
 
 K=3
 MAX_PROMPT_LENGTH=512
@@ -89,8 +105,10 @@ python -m verl.trainer.main_ppo \
   critic.model.fsdp_config.optimizer_offload=True \
   algorithm.kl_ctrl.kl_coef=0.00 \
   algorithm.adv_estimator=$ADVANTAGE \
+  +reward.snr_based_reward=$REWARD_snr \
+  +reward.entropy_based_reward=$REWARD_entropy \
   custom_reward_function.path="./verl/utils/reward_score/ttrl_math/__init__.py" \
-  custom_reward_function.name=reward_func \
+  custom_reward_function.name=$REWARD_FUNC \
   +custom_reward_function.name_val=reward_func_val \
   ttrl.enable=True \
   ttrl.n_votes_per_prompt=$N_VOTES_PER_PROMPT \
@@ -108,5 +126,3 @@ python -m verl.trainer.main_ppo \
   trainer.total_epochs=$EPISODE "$@"
  
 echo "Output directory: $OUTPUT_DIR"
-
-# '"\nPlease reason step by step, and put your final answer within \boxed{}."' \
