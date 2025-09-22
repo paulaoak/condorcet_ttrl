@@ -152,7 +152,8 @@ def main():
     plt.legend()
     plt.grid(True, which="both", ls='--', lw=0.5)
     plt.tight_layout()
-    plt.savefig("empirical_vs_theoreticalbounds.png", dpi=300)  # High resolution
+    #plt.savefig("empirical_vs_theoreticalbounds.png", dpi=300)  # High resolution
+    plt.savefig("empirical_vs_theoreticalbounds.pdf") 
 
     return 
         
