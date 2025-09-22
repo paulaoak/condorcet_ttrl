@@ -15,14 +15,14 @@ ADVANTAGE="grpo"
 REWARD_snr=True
 REWARD_entropy=False
 
-if [  "$REWARD_snr" = true ] && [ "$REWARD_entropy" = true ]; then
+if [  "$REWARD_snr" = True ] && [ "$REWARD_entropy" = True ]; then
   echo "Please enable only one reward function."
   exit 1
 fi
 
-if [ "$REWARD_snr" = true ]; then
+if [ "$REWARD_snr" = True ]; then
   REWARD_FUNC=reward_func
-elif [ "$REWARD_entropy" = true ]; then
+elif [ "$REWARD_entropy" = True ]; then
   REWARD_FUNC=reward_func_entropy
 else
   echo "Please enable at least one reward function."
