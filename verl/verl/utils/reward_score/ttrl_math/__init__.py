@@ -61,15 +61,9 @@ def simplify_expression_string(expression_string: str) -> str:
 def compute_score(model_response, gt_answer, fast=False):
     model_answer = extract_answer(model_response)
 
-    majority_vote = gt_answer[0]
-    runner_up = gt_answer[1]
-    majority_count = float(gt_answer[2])
-    runner_up_count = float(gt_answer[3])
-    total_count = float(gt_answer[4])
-
     if model_answer is None:
         return {
-            "score": 0.0,
+            "score": -10.0,
             "format_score": 0.0,
             "acc": False,
             "extracted_gt": majority_vote,
@@ -78,6 +72,12 @@ def compute_score(model_response, gt_answer, fast=False):
         # return 0.0, 0.0  # Cannot even parse anything.
     is_correct_majority = False
     is_correct_runner_up = False
+    
+    majority_vote = gt_answer[0]
+    runner_up = gt_answer[1]
+    majority_count = float(gt_answer[2])
+    runner_up_count = float(gt_answer[3])
+    total_count = float(gt_answer[4])
 
     if isinstance(majority_vote, float) or isinstance(majority_vote, int):
         majority_vote = str(majority_vote)

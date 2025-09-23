@@ -104,7 +104,7 @@ def _majority_vote(model_outputs: List[str]) -> tuple[str, float]:
     model_answers = [answer for answer in model_answers if answer is not None]
     model_answers = [simplify_expression_string(answer) for answer in model_answers]
     if len(model_answers) == 0:
-        return "None", 0.0
+        return ["None", 0.0, {}], -100
     
     counter = Counter(model_answers)
     
