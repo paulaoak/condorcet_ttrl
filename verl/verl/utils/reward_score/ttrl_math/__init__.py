@@ -11,6 +11,7 @@ from sympy.parsing.sympy_parser import parse_expr
 import traceback
 from collections import Counter
 import numpy as np
+import warnings
 
 from .math_utils import extract_boxed_answer, is_latex_equal, grade_answer_mathd, grade_answer_sympy, timeout_ours
 
@@ -141,11 +142,18 @@ def compute_score_entropy(model_response, gt_answer, fast=False):
 
     majority_vote = gt_answer[0]
     counts = gt_answer[2]
-    counts_copy = counts.copy()
+
+    if isinstance(counts, str):
+        warnings.warn(
+            f"Invalid type for counts: got str ('{counts}'). "
+            "It must be a dict, not a str. Proceeding with empty dict instead.",
+            UserWarning
+        )
+        counts = {}
 
     if model_answer is None:
         return {
-            "score": 0.0,
+            "score": -10.0,
             "format_score": 0.0,
             "acc": False,
             "extracted_gt": majority_vote,
@@ -153,6 +161,7 @@ def compute_score_entropy(model_response, gt_answer, fast=False):
         }
         # return 0.0, 0.0  # Cannot even parse anything.
 
+    counts_copy = counts.copy()
 
     if isinstance(majority_vote, float) or isinstance(majority_vote, int):
         majority_vote = str(majority_vote)
