@@ -12,6 +12,22 @@ TIME_TAG=$(date +%H%M%S)
 TASK="AIME-TTT"
 BACKBONE="Llama-3.1-8B-Instruct"
 ADVANTAGE="grpo"
+REWARD_snr=True
+REWARD_entropy=False
+
+if [  "$REWARD_snr" = True ] && [ "$REWARD_entropy" = True ]; then
+  echo "Please enable only one reward function."
+  exit 1
+fi
+
+if [ "$REWARD_snr" = True ]; then
+  REWARD_FUNC=reward_func
+elif [ "$REWARD_entropy" = True ]; then
+  REWARD_FUNC=reward_func_entropy
+else
+  echo "Please enable at least one reward function."
+  exit 1
+fi
 
 K=3
 MAX_PROMPT_LENGTH=512
@@ -41,15 +57,15 @@ OUTPUT_DIR="checkpoints/${WANDB_PROJECT}/${MODEL}/${DATE}/${EXPERIMENT}-${ADVANT
 
 # ------------------------------------------------------------
 python -m verl.trainer.main_ppo \
---config-name='ppo_trainer_ttrl.yaml'\
+  --config-name='ppo_trainer_ttrl.yaml' \
   data.train_files=["$DATA_LOCAL_DIR/$TASK/train.parquet"] \
   data.val_files=["$DATA_LOCAL_DIR/$TASK/test.parquet"] \
   data.max_prompt_length=$MAX_PROMPT_LENGTH \
   data.max_response_length=$MAX_RESPONSE_LENGTH \
   data.train_batch_size=$DATA_TRAIN_BATCH_SIZE \
   data.filter_overlong_prompts=True \
-  +data.suffix_prompt='"\nPlease reason step by step, and put your final answer within \boxed{}. The final answer must be an integer."' \
   data.truncation='error' \
+  +data.suffix_prompt='"\nPlease reason step by step, and put your final answer within \boxed{}. The final answer must be an integer."' \
   actor_rollout_ref.model.path=$BACKBONE_PATH \
   actor_rollout_ref.model.enable_gradient_checkpointing=True \
   +actor_rollout_ref.model.dtype='bfloat16' \
@@ -63,13 +79,13 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.actor.fsdp_config.param_offload=True \
   actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
   actor_rollout_ref.actor.ppo_max_token_len_per_gpu=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
-  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
+  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=2 \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.name=vllm \
   actor_rollout_ref.rollout.temperature=0.6 \
   actor_rollout_ref.rollout.enforce_eager=False \
   actor_rollout_ref.rollout.free_cache_engine=True \
-  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
+  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=2 \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
   actor_rollout_ref.rollout.gpu_memory_utilization=0.70 \
   actor_rollout_ref.rollout.n=$N_SAMPLES_PER_PROMPT \
@@ -84,13 +100,15 @@ python -m verl.trainer.main_ppo \
   critic.model.path=$BACKBONE_PATH \
   +critic.model.dtype='bfloat16' \
   critic.model.enable_gradient_checkpointing=True \
-  critic.ppo_micro_batch_size_per_gpu=$MICRO_BATCH_SIZE \
+  critic.ppo_micro_batch_size_per_gpu=2 \
   critic.model.fsdp_config.param_offload=True \
   critic.model.fsdp_config.optimizer_offload=True \
   algorithm.kl_ctrl.kl_coef=0.00 \
   algorithm.adv_estimator=$ADVANTAGE \
+  +reward.snr_based_reward=$REWARD_snr \
+  +reward.entropy_based_reward=$REWARD_entropy \
   custom_reward_function.path="./verl/utils/reward_score/ttrl_math/__init__.py" \
-  custom_reward_function.name=reward_func \
+  custom_reward_function.name=$REWARD_FUNC \
   +custom_reward_function.name_val=reward_func_val \
   ttrl.enable=True \
   ttrl.n_votes_per_prompt=$N_VOTES_PER_PROMPT \
@@ -106,5 +124,5 @@ python -m verl.trainer.main_ppo \
   trainer.max_critic_ckpt_to_keep=0 \
   trainer.default_local_dir=$OUTPUT_DIR \
   trainer.total_epochs=$EPISODE "$@"
-
+ 
 echo "Output directory: $OUTPUT_DIR"
