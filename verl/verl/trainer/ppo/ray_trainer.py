@@ -50,7 +50,7 @@ from verl.trainer.ppo.metric_utils import (
     process_validation_metrics,
 )
 from verl.trainer.ppo.reward import compute_reward, compute_reward_async
-from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path, should_save_ckpt_esi
+from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path, should_save_ckpt_esi, StableLossEarlyStopping
 from verl.utils.debug import marked_timer
 from verl.utils.metric import (
     reduce_metrics,
@@ -802,7 +802,7 @@ class RayPPOTrainer:
             metric_dict["val-aux/num_turns/max"] = sample_turns.max()
             metric_dict["val-aux/num_turns/mean"] = sample_turns.mean()
 
-        return metric_dict
+        return metric_dict, data_source
 
     def init_workers(self):
         """Initialize distributed training workers using Ray backend.
@@ -1059,12 +1059,21 @@ class RayPPOTrainer:
         # load checkpoint before doing anything
         self._load_checkpoint()
 
+        stopping_stability = StableLossEarlyStopping(tolerance=5e-3, patience=10)
+
         # perform validation before training
         # currently, we only support validation using the reward_function.
         if self.val_reward_fn is not None and self.config.trainer.get("val_before_train", True):
-            val_metrics = self._validate()
+            val_metrics, data_source_name = self._validate()
             assert val_metrics, f"{val_metrics=}"
             pprint(f"Initial validation metrics: {val_metrics}")
+            metric_name_1 = f"val-core/{data_source_name}/acc/mean@16"
+            metric_name_2 = f"val-core/{data_source_name}/acc/maj@16/mean"
+            val_metrics_1 = val_metrics[metric_name_1]
+            val_metrics_2 = val_metrics[metric_name_2]
+                        
+            stopping_stability(val_metrics_1, val_metrics_2)
+            
             logger.log(data=val_metrics, step=self.global_steps)
             if self.config.trainer.get("val_only", False):
                 return
@@ -1353,10 +1362,16 @@ class RayPPOTrainer:
                         and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0)
                     ):
                         with marked_timer("testing", timing_raw, color="green"):
-                            val_metrics: dict = self._validate()
+                            val_metrics, data_source_name = self._validate()
                             if is_last_step:
                                 last_val_metrics = val_metrics
                         metrics.update(val_metrics)
+                        metric_name_1 = f"val-core/{data_source_name}/acc/mean@16"
+                        metric_name_2 = f"val-core/{data_source_name}/acc/maj@16/mean"
+                        val_metrics_1 = val_metrics[metric_name_1]
+                        val_metrics_2 = val_metrics[metric_name_2]
+
+                        stopping_stability(val_metrics_1, val_metrics_2)
 
                     esi_close_to_expiration = should_save_ckpt_esi(
                         max_steps_duration=self.max_steps_duration,
@@ -1366,6 +1381,7 @@ class RayPPOTrainer:
                         is_last_step
                         or self.global_steps % self.config.trainer.save_freq == 0
                         or esi_close_to_expiration
+                        or stopping_stability.should_stop
                     ):
                         if esi_close_to_expiration:
                             print("Force saving checkpoint: ESI instance expiration approaching.")
