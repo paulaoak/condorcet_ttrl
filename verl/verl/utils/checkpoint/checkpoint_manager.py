@@ -236,3 +236,34 @@ def should_save_ckpt_esi(max_steps_duration: float, save_ckpt_duration: float = 
         return time_difference < timedelta(minutes=threshold_minutes)
     else:
         return False
+
+class StableLossEarlyStopping:
+    def __init__(self, tolerance=5e-3, patience=10, save_path="best_model.pt"):
+        """
+        Args:
+            tolerance (float): Allowed fluctuation in validation loss.
+            patience (int): Number of epochs with stable loss before stopping.
+            save_path (str): Path to save the model.
+        """
+        self.tolerance = tolerance
+        self.patience = patience
+
+        self.best_loss = None
+        self.counter = 0
+        self.should_stop = False
+
+    def __call__(self, val_loss):
+        if self.best_loss is None:
+            self.best_loss = val_loss
+            return
+
+        # Check if the difference is within tolerance
+        if abs(val_loss - self.best_loss) < self.tolerance:
+            self.counter += 1
+            if self.counter >= self.patience:
+                print(f"Validation loss stable for {self.patience} steps. Stopping training.")
+                self.should_stop = True
+        else:
+            # Reset if outside tolerance
+            self.counter = 0
+            self.best_loss = val_loss
