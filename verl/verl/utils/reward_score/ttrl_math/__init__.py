@@ -60,6 +60,7 @@ def simplify_expression_string(expression_string: str) -> str:
         
 def compute_score(model_response, gt_answer, fast=False):
     model_answer = extract_answer(model_response)
+    majority_vote = gt_answer[0]
 
     if model_answer is None:
         return {
@@ -73,7 +74,6 @@ def compute_score(model_response, gt_answer, fast=False):
     is_correct_majority = False
     is_correct_runner_up = False
     
-    majority_vote = gt_answer[0]
     runner_up = gt_answer[1]
     majority_count = float(gt_answer[2])
     runner_up_count = float(gt_answer[3])
