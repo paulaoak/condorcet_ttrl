@@ -24,6 +24,7 @@ import torch
 
 from verl import DataProto
 from verl.utils.import_utils import deprecated
+from verl.utils.statistical_certificates.MMC_stopping_rule import PluralityEAndDeciderPrior
 
 
 @deprecated("verl.utils.metric.reduce_metrics")
@@ -424,6 +425,137 @@ def process_validation_metrics(
                                 seed=seed,
                             )
                             metric[f"maj@{n}/mean"], metric[f"maj@{n}/std"] = maj_n_mean, maj_n_std
+
+                data_src2prompt2var2metric[data_source][prompt][var_name] = metric
+
+    # Aggregate metrics across prompts
+    data_src2var2metric2prompt_vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for data_source, prompt2var2metric in data_src2prompt2var2metric.items():
+        for prompt, var2metric in prompt2var2metric.items():
+            for var_name, metric in var2metric.items():
+                for metric_name, metric_val in metric.items():
+                    data_src2var2metric2prompt_vals[data_source][var_name][metric_name].append(metric_val)
+
+    data_src2var2metric2val = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    for data_source, var2metric2prompt_vals in data_src2var2metric2prompt_vals.items():
+        for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
+            for metric_name, prompt_vals in metric2prompt_vals.items():
+                data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+
+    return data_src2var2metric2val
+
+
+def process_validation_metrics_last(
+    data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], seed: int = 42
+) -> dict[str, dict[str, dict[str, float]]]:
+    """
+    Process validation metrics into a structured format with statistical analysis.
+
+    This function organizes validation metrics by data source and prompt, then computes
+    various statistical measures including means, standard deviations, best/worst values,
+    and majority voting results. It also performs bootstrap sampling to estimate statistics
+    for different sample sizes.
+
+    Args:
+        data_sources: List of data source identifiers for each sample.
+        sample_inputs: List of input prompts corresponding to each sample.
+        infos_dict: Dictionary mapping variable names to lists of values for each sample.
+        seed: Random seed for bootstrap sampling. Defaults to 42.
+
+    Returns:
+        A nested dictionary with the structure:
+        {
+            data_source: {
+                variable_name: {
+                    metric_name: value
+                }
+            }
+        }
+
+        Where metric_name includes:
+        - "maj@N/mean": Mean of majority voting results 
+        - "maj/majority_adaptive_01": Mean of majority voting results with adaptive stopping rule (delta=0.1)
+        - "maj/majority_adaptive_02": Mean of majority voting results with adaptive stopping rule (delta=0.2)
+        - "maj/total_votes_01": Total votes used with adaptive stopping rule (delta=0.1)
+        - "maj/total_votes_02": Total votes used with adaptive stopping rule (delta=0.2)
+
+    Example:
+        >>> data_sources = ["source1", "source1", "source2"]
+        >>> sample_inputs = ["prompt1", "prompt1", "prompt2"]
+        >>> infos_dict = {"score": [0.8, 0.9, 0.7], "pred": ["A", "A", "B"]}
+        >>> result = process_validation_metrics_last(data_sources, sample_inputs, infos_dict)
+        >>> # result will contain statistics for each data source and variable
+    """
+    # Group metrics by data source, prompt and variable
+    data_src2prompt2var2vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for sample_idx, data_source in enumerate(data_sources):
+        prompt = sample_inputs[sample_idx]
+        var2vals = data_src2prompt2var2vals[data_source][prompt]
+        for var_name, var_vals in infos_dict.items():
+            var2vals[var_name].append(var_vals[sample_idx])
+
+    # Calculate metrics for each group
+    data_src2prompt2var2metric = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+    for data_source, prompt2var2vals in data_src2prompt2var2vals.items():
+        for prompt, var2vals in prompt2var2vals.items():
+            for var_name, var_vals in var2vals.items():
+                if isinstance(var_vals[0], str):
+                    continue
+
+                metric = {}
+                n_resps = len(var_vals)
+
+                if n_resps > 1:
+                    if var2vals.get("pred", None) is not None:
+                        vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
+                        metric_majority= partial(calc_maj_val, vote_key="pred", val_key="val")
+                        metric[f"maj@{n_resps}/mean"] = metric_majority(vote_data)
+
+                        # Adaptive majority voting with MMC stopping rule for two different levels of accuracy
+                        decider_prior = PluralityEAndDeciderPrior(
+                            labels=list(set(var2vals["pred"])),
+                            M=2,
+                            delta=0.1,
+                            N_max=40,
+                            min_pair_updates=1,
+                            min_other_updates=1,
+                            require_current_leader_match=False,
+                        )
+
+                        decider_prior_lower_accuracy = PluralityEAndDeciderPrior(
+                            labels=list(set(var2vals["pred"])),
+                            M=2,
+                            delta=0.2,
+                            N_max=40,
+                            min_pair_updates=1,
+                            min_other_updates=1,
+                            require_current_leader_match=False,
+                        )
+
+                        i = 0
+                        while True:      
+                            v = var2vals["pred"][i]
+                            i = i + 1
+                            diag = decider_prior.on_vote(v)
+                            if diag["stopped"] or diag["abstained"]:
+                                break  # decision made (or abstained at budget)
+                        N_votes_1 = i  # number of votes used
+
+                        j = 0
+                        while True:      
+                            v = var2vals["pred"][j]
+                            j = j + 1
+                            diag = decider_prior_lower_accuracy.on_vote(v)
+                            if diag["stopped"] or diag["abstained"]:
+                                break  # decision made (or abstained at budget)
+                        N_votes_2 = j  # number of votes used
+
+                        vote_data_1 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_1], var2vals["pred"][:N_votes_1])]
+                        vote_data_2 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_2], var2vals["pred"][:N_votes_2])]
+                        metric[f"maj/majority_adaptive_01"] = metric_majority(vote_data_1)
+                        metric[f"maj/majority_adaptive_02"] = metric_majority(vote_data_2)
+                        metric[f"maj/total_votes_01"] = N_votes_1  # different levels of accuracy
+                        metric[f"maj/total_votes_02"] = N_votes_2
 
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
