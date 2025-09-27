@@ -552,10 +552,10 @@ def process_validation_metrics_last(
 
                         vote_data_1 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_1], var2vals["pred"][:N_votes_1])]
                         vote_data_2 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_2], var2vals["pred"][:N_votes_2])]
-                        metric[f"maj/majority_adaptive_01"] = metric_majority(vote_data_1)
-                        metric[f"maj/majority_adaptive_02"] = metric_majority(vote_data_2)
-                        metric[f"maj/total_votes_01"] = N_votes_1  # different levels of accuracy
-                        metric[f"maj/total_votes_02"] = N_votes_2
+                        metric[f"maj@{n_resps}/majority_adaptive_01"] = metric_majority(vote_data_1)
+                        metric[f"maj@{n_resps}/majority_adaptive_02"] = metric_majority(vote_data_2)
+                        metric[f"maj@{n_resps}/total_votes_01"] = N_votes_1  # different levels of accuracy
+                        metric[f"maj@{n_resps}/total_votes_02"] = N_votes_2
 
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
