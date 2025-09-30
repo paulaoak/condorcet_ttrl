@@ -46,13 +46,13 @@ MINI_BATCH_SIZE=1
 MICRO_BATCH_SIZE=2
 
 DATA_LOCAL_DIR="data"
-BACKBONE_PATH="Qwen/Qwen2.5-7B"   #"path/to/${BACKBONE}"
+BACKBONE_PATH="Qwen/Qwen2.5-7B"   
 
 MODEL="${TASK}-${BACKBONE}"
 EXPERIMENT="TTRL-Len@${K}k"
 
 WANDB_PROJECT="TTRL-verl-AIME-SNR"
-LOG_NAME="${DATE}-${EXPERIMENT}-${MODEL}-${ADVANTAGE}"
+LOG_NAME="${DATE}-${EXPERIMENT}-${MODEL}-${ADVANTAGE}"  #-ENTROPY when using entropy reward
 OUTPUT_DIR="checkpoints/${WANDB_PROJECT}/${MODEL}/${DATE}/${EXPERIMENT}-${ADVANTAGE}-${TIME_TAG}"
 
 # ------------------------------------------------------------

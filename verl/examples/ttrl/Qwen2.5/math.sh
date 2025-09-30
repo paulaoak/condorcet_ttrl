@@ -2,6 +2,7 @@
 #export VLLM_ATTENTION_BACKEND=XFORMERS
 unset VLLM_ATTENTION_BACKEND
 export VLLM_USE_V1=1
+export WANDB_API_KEY=7dbc60219e2e293affe5503a11b96fbc218bf5cb
 
 # ------------------------------------------------------------
 
@@ -11,8 +12,8 @@ TIME_TAG=$(date +%H%M%S)
 TASK="MATH-TTT"
 BACKBONE="Qwen2.5-7B"
 ADVANTAGE="grpo"
-REWARD_snr=True
-REWARD_entropy=False
+REWARD_snr=False
+REWARD_entropy=True
 
 if [  "$REWARD_snr" = True ] && [ "$REWARD_entropy" = True ]; then
   echo "Please enable only one reward function."
@@ -90,6 +91,7 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.rollout.n=$N_SAMPLES_PER_PROMPT \
   actor_rollout_ref.rollout.val_kwargs.do_sample=True \
   actor_rollout_ref.rollout.val_kwargs.n=$N \
+  +actor_rollout_ref.rollout.val_kwargs.n_last=40 \
   actor_rollout_ref.rollout.val_kwargs.top_p=0.95 \
   actor_rollout_ref.rollout.val_kwargs.temperature=0.6 \
   actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
