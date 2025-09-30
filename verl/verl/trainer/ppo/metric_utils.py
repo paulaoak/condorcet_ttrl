@@ -525,7 +525,7 @@ def process_validation_metrics_last(
                         decider_prior_lower_accuracy = PluralityEAndDeciderPrior(
                             labels=list(set(var2vals["pred"])),
                             M=2,
-                            delta=0.2,
+                            delta=0.4,
                             N_max=40,
                             min_pair_updates=1,
                             min_other_updates=1,
