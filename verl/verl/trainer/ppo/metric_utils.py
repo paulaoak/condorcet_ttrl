@@ -506,56 +506,66 @@ def process_validation_metrics_last(
                 n_resps = len(var_vals)
 
                 if n_resps > 1:
-                    if var2vals.get("pred", None) is not None:
-                        vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals, var2vals["pred"])]
-                        metric_majority= partial(calc_maj_val, vote_key="pred", val_key="val")
-                        metric[f"maj@{n_resps}/mean"] = metric_majority(vote_data)
+                    
+                    ns = []
+                    n = 10
+                    while n < n_resps:
+                        ns.append(n)
+                        n += 10
+                    ns.append(n_resps)
 
-                        # Adaptive majority voting with MMC stopping rule for two different levels of accuracy
-                        decider_prior = PluralityEAndDeciderPrior(
-                            labels=list(set(var2vals["pred"])),
-                            M=2,
-                            delta=0.1,
-                            N_max=40,
-                            min_pair_updates=1,
-                            min_other_updates=1,
-                            require_current_leader_match=False,
-                        )
+                    for n in ns:
 
-                        decider_prior_lower_accuracy = PluralityEAndDeciderPrior(
-                            labels=list(set(var2vals["pred"])),
-                            M=2,
-                            delta=0.4,
-                            N_max=40,
-                            min_pair_updates=1,
-                            min_other_updates=1,
-                            require_current_leader_match=False,
-                        )
+                        if var2vals.get("pred", None) is not None:
+                            vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:n], var2vals["pred"][:n])]
+                            metric_majority= partial(calc_maj_val, vote_key="pred", val_key="val")
+                            metric[f"maj@{n}/mean"] = metric_majority(vote_data)
 
-                        i = 0
-                        while True:      
-                            v = var2vals["pred"][i]
-                            i = i + 1
-                            diag = decider_prior.on_vote(v)
-                            if diag["stopped"] or diag["abstained"]:
-                                break  # decision made (or abstained at budget)
-                        N_votes_1 = i  # number of votes used
+                            # Adaptive majority voting with MMC stopping rule for two different levels of accuracy
+                            decider_prior = PluralityEAndDeciderPrior(
+                                labels=list(set(var2vals["pred"])),
+                                M=2,
+                                delta=0.1,
+                                N_max=n,
+                                min_pair_updates=1,
+                                min_other_updates=1,
+                                require_current_leader_match=False,
+                            )
 
-                        j = 0
-                        while True:      
-                            v = var2vals["pred"][j]
-                            j = j + 1
-                            diag = decider_prior_lower_accuracy.on_vote(v)
-                            if diag["stopped"] or diag["abstained"]:
-                                break  # decision made (or abstained at budget)
-                        N_votes_2 = j  # number of votes used
+                            decider_prior_lower_accuracy = PluralityEAndDeciderPrior(
+                                labels=list(set(var2vals["pred"])),
+                                M=2,
+                                delta=0.4,
+                                N_max=n,
+                                min_pair_updates=1,
+                                min_other_updates=1,
+                                require_current_leader_match=False,
+                            )
 
-                        vote_data_1 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_1], var2vals["pred"][:N_votes_1])]
-                        vote_data_2 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_2], var2vals["pred"][:N_votes_2])]
-                        metric[f"maj@{n_resps}/majority_adaptive_01"] = metric_majority(vote_data_1)
-                        metric[f"maj@{n_resps}/majority_adaptive_02"] = metric_majority(vote_data_2)
-                        metric[f"maj@{n_resps}/total_votes_01"] = N_votes_1  # different levels of accuracy
-                        metric[f"maj@{n_resps}/total_votes_02"] = N_votes_2
+                            i = 0
+                            while True:      
+                                v = var2vals["pred"][i]
+                                i = i + 1
+                                diag = decider_prior.on_vote(v)
+                                if diag["stopped"] or diag["abstained"]:
+                                    break  # decision made (or abstained at budget)
+                            N_votes_1 = i  # number of votes used
+
+                            j = 0
+                            while True:      
+                                v = var2vals["pred"][j]
+                                j = j + 1
+                                diag = decider_prior_lower_accuracy.on_vote(v)
+                                if diag["stopped"] or diag["abstained"]:
+                                    break  # decision made (or abstained at budget)
+                            N_votes_2 = j  # number of votes used
+
+                            vote_data_1 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_1], var2vals["pred"][:N_votes_1])]
+                            vote_data_2 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_2], var2vals["pred"][:N_votes_2])]
+                            metric[f"maj@{n}/majority_adaptive_01"] = metric_majority(vote_data_1)
+                            metric[f"maj@{n}/majority_adaptive_04"] = metric_majority(vote_data_2)
+                            metric[f"maj@{n}/total_votes_01"] = N_votes_1  # different levels of accuracy
+                            metric[f"maj@{n}/total_votes_04"] = N_votes_2
 
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 

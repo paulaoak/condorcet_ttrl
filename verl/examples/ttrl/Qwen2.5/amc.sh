@@ -91,7 +91,7 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.rollout.n=$N_SAMPLES_PER_PROMPT \
   actor_rollout_ref.rollout.val_kwargs.do_sample=True \
   actor_rollout_ref.rollout.val_kwargs.n=$N \
-  +actor_rollout_ref.rollout.val_kwargs.n_last=40 \
+  +actor_rollout_ref.rollout.val_kwargs.n_last=100 \
   actor_rollout_ref.rollout.val_kwargs.top_p=0.95 \
   actor_rollout_ref.rollout.val_kwargs.temperature=0.6 \
   actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
