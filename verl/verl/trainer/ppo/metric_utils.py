@@ -15,9 +15,10 @@
 Metrics related to the PPO trainer.
 """
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from functools import partial
 from typing import Any, Callable, Dict, List
+from scipy.special import betainc
 
 import numpy as np
 import torch
@@ -336,6 +337,63 @@ def calc_maj_val(data: list[dict[str, Any]], vote_key: str, val_key: str) -> flo
     return maj_val
 
 
+def probability_betaprior(v1, v2):
+    return betainc(v2+1, v1+1, 0.5) 
+
+def calc_probability_maj(data, vote_key="pred", val_key="val"):
+    """
+    Calculate a value based on majority voting and the probability of being correct.
+
+    Args:
+        data: List of dictionaries, where each dictionary contains both vote_key and val_key.
+        vote_key: The key in each dictionary used for voting/counting.
+        val_key: The key in each dictionary whose value will be returned for the majority vote.
+
+    Returns:
+        The value associated with the most common vote and the probability of that vote being correct.
+
+    Example:
+        >>> data = [
+        ...     {"pred": "A", "val": 1},
+        ...     {"pred": "B", "val": 0.0},
+        ...     {"pred": "A", "val": 1}
+        ... ]
+        >>> calc_maj_val(data, vote_key="pred", val_key="val")
+        1, 0.25  # Returns the first "val" for the majority vote "A"
+    """
+    if not data:
+        return 0, 0.5
+
+    vote2vals = defaultdict(list)
+    n = len(data)
+    true_response = None  
+
+    for d in data:
+        vote2vals[d[vote_key]].append(d[val_key])
+        if d[val_key] == 1:
+            true_response = d[vote_key]
+
+    vote2cnt = {k: len(v) for k, v in vote2vals.items()}
+
+    maj_vote, maj_count = max(vote2cnt.items(), key=lambda x: x[1])
+
+    maj_val = vote2vals[maj_vote][0]
+
+    # Compute probability
+    if maj_val == 1:
+        v1 = maj_count
+        v2 = Counter(vote2cnt).most_common(2)[1][1] if len(vote2cnt) > 1 else 0
+    else:
+        v1 = vote2cnt.get(true_response, 0) if true_response else 0
+        v2 = maj_count
+
+    vothers = n - v1 - v2
+        
+    probability_val =  min(probability_betaprior(v1, v2), probability_betaprior(v1, vothers))
+
+    return maj_val, probability_val
+
+
 def process_validation_metrics(
     data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], seed: int = 42
 ) -> dict[str, dict[str, dict[str, float]]]:
@@ -492,7 +550,8 @@ def process_validation_metrics_last(
         prompt = sample_inputs[sample_idx]
         var2vals = data_src2prompt2var2vals[data_source][prompt]
         for var_name, var_vals in infos_dict.items():
-            var2vals[var_name].append(var_vals[sample_idx])
+            if var_name == "reward" or var_name == "pred":
+                var2vals[var_name].append(var_vals[sample_idx])
 
     # Calculate metrics for each group
     data_src2prompt2var2metric = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
@@ -519,6 +578,7 @@ def process_validation_metrics_last(
                         if var2vals.get("pred", None) is not None:
                             vote_data = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:n], var2vals["pred"][:n])]
                             metric_majority= partial(calc_maj_val, vote_key="pred", val_key="val")
+                            metric_majority_probability= partial(calc_probability_maj, vote_key="pred", val_key="val")
                             metric[f"maj@{n}/mean"] = metric_majority(vote_data)
 
                             # Adaptive majority voting with MMC stopping rule for two different levels of accuracy
@@ -562,8 +622,8 @@ def process_validation_metrics_last(
 
                             vote_data_1 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_1], var2vals["pred"][:N_votes_1])]
                             vote_data_2 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_2], var2vals["pred"][:N_votes_2])]
-                            metric[f"maj@{n}/majority_adaptive_01"] = metric_majority(vote_data_1)
-                            metric[f"maj@{n}/majority_adaptive_04"] = metric_majority(vote_data_2)
+                            metric[f"maj@{n}/majority_adaptive_01"], metric[f"maj@{n}/probability_adaptive_01"] = metric_majority_probability(vote_data_1)
+                            metric[f"maj@{n}/majority_adaptive_04"], metric[f"maj@{n}/probability_adaptive_04"] = metric_majority_probability(vote_data_2)
                             metric[f"maj@{n}/total_votes_01"] = N_votes_1  # different levels of accuracy
                             metric[f"maj@{n}/total_votes_04"] = N_votes_2
 
@@ -581,6 +641,9 @@ def process_validation_metrics_last(
     for data_source, var2metric2prompt_vals in data_src2var2metric2prompt_vals.items():
         for var_name, metric2prompt_vals in var2metric2prompt_vals.items():
             for metric_name, prompt_vals in metric2prompt_vals.items():
-                data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+                if "probability_adaptive" in metric_name:
+                    data_src2var2metric2val[data_source][var_name][metric_name] = prompt_vals # This are the values that we will use to obtain a histogram
+                else:
+                    data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
 
     return data_src2var2metric2val
