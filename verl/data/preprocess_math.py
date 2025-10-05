@@ -20,7 +20,6 @@ def make_map_fn(split, source=None):
                     {
                         "role": "user",
                         "content": question,
-                        "difficulty": difficulty_level
                     }
                 ],
                 "ability": "math",
@@ -28,6 +27,7 @@ def make_map_fn(split, source=None):
                 "extra_info": {
                     "split": split,
                     "index": f"{data_source}-{idx}",
+                    "difficulty": difficulty_level,
                 },
             }
             return data

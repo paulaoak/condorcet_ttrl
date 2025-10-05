@@ -807,6 +807,7 @@ class RayPPOTrainer:
     
     def _last_validate(self):
         data_source_lst = []
+        difficulty_lst = []
         reward_extra_infos_dict: dict[str, list] = defaultdict(list)
 
         # Lists to collect samples for the table
@@ -902,6 +903,7 @@ class RayPPOTrainer:
                 sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
 
             data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
+            difficulty_lst.append(test_batch.non_tensor_batch.get("difficulty", [0] * reward_tensor.shape[0]))
 
         self._maybe_log_val_generations(inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores)
 
@@ -920,8 +922,9 @@ class RayPPOTrainer:
             assert len(lst) == 0 or len(lst) == len(sample_scores), f"{key_info}: {len(lst)=}, {len(sample_scores)=}"
 
         data_sources = np.concatenate(data_source_lst, axis=0)
+        difficulty_levels_array = np.concatenate(difficulty_lst, axis=0)
 
-        data_src2var2metric2val = process_validation_metrics_last(data_sources, sample_inputs, reward_extra_infos_dict)
+        data_src2var2metric2val = process_validation_metrics_last(data_sources, sample_inputs, reward_extra_infos_dict, difficulty_levels_array)
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
             core_var = "acc" if "acc" in var2metric2val else "reward"

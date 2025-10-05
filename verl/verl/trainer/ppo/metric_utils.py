@@ -17,7 +17,7 @@ Metrics related to the PPO trainer.
 
 from collections import defaultdict, Counter
 from functools import partial
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 from scipy.special import betainc
 
 import numpy as np
@@ -504,7 +504,7 @@ def process_validation_metrics(
 
 
 def process_validation_metrics_last(
-    data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], seed: int = 42
+    data_sources: list[str], sample_inputs: list[str], infos_dict: dict[str, list[Any]], difficulties: Optional[list[Any]] = None, seed: int = 42
 ) -> dict[str, dict[str, dict[str, float]]]:
     """
     Process validation metrics into a structured format with statistical analysis.
@@ -630,11 +630,9 @@ def process_validation_metrics_last(
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
     # Aggregate metrics across prompts
-    prompt_list = []
     data_src2var2metric2prompt_vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for data_source, prompt2var2metric in data_src2prompt2var2metric.items():
         for prompt, var2metric in prompt2var2metric.items():
-            prompt_list.append(prompt)
             for var_name, metric in var2metric.items():
                 for metric_name, metric_val in metric.items():
                     data_src2var2metric2prompt_vals[data_source][var_name][metric_name].append(metric_val)
@@ -647,7 +645,8 @@ def process_validation_metrics_last(
                     data_src2var2metric2val[data_source][var_name][metric_name] = prompt_vals # This are the values that we will use to obtain a histogram
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
-        
-    data_src2var2metric2val[data_source]["prompt_list"]["prompt_raw"] = np.array(prompt_list)
+
+    if difficulties is not None:
+        data_src2var2metric2val[data_source]["difficulty"]["difficulty_level"] = difficulties
 
     return data_src2var2metric2val
