@@ -630,9 +630,11 @@ def process_validation_metrics_last(
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
     # Aggregate metrics across prompts
+    prompt_list = []
     data_src2var2metric2prompt_vals = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for data_source, prompt2var2metric in data_src2prompt2var2metric.items():
         for prompt, var2metric in prompt2var2metric.items():
+            prompt_list.append(prompt)
             for var_name, metric in var2metric.items():
                 for metric_name, metric_val in metric.items():
                     data_src2var2metric2prompt_vals[data_source][var_name][metric_name].append(metric_val)
@@ -645,5 +647,7 @@ def process_validation_metrics_last(
                     data_src2var2metric2val[data_source][var_name][metric_name] = prompt_vals # This are the values that we will use to obtain a histogram
                 else:
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
+        
+    data_src2var2metric2val[data_source]["prompt_list"]["prompt_raw"] = np.array(prompt_list)
 
     return data_src2var2metric2val
