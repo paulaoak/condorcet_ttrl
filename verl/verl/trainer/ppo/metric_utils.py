@@ -648,8 +648,8 @@ def process_validation_metrics_last(
 
     if difficulties is not None:
         try:
-            data_src2var2metric2val["_meta"]["difficulty_levels"] = list(map(int, difficulties))
+            data_src2var2metric2val[data_source]["_meta"]["difficulty_levels"] = list(map(int, difficulties))
         except Exception:
-            data_src2var2metric2val["_meta"]["difficulty_levels"] = list(difficulties)
+            data_src2var2metric2val[data_source]["_meta"]["difficulty_levels"] = list(difficulties)
 
     return data_src2var2metric2val

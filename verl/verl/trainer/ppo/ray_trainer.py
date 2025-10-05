@@ -929,7 +929,9 @@ class RayPPOTrainer:
         for data_source, var2metric2val in data_src2var2metric2val.items():
             core_var = "acc" if "acc" in var2metric2val else "reward"
             for var_name, metric2val in var2metric2val.items():
-                n_max = max([int(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
+                # n_max = max([int(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
+                n_max = self.config.actor_rollout_ref.rollout.val_kwargs.n_last
+
                 for metric_name, metric_val in metric2val.items():
                     if (
                         (var_name == core_var)
