@@ -647,6 +647,9 @@ def process_validation_metrics_last(
                     data_src2var2metric2val[data_source][var_name][metric_name] = np.mean(prompt_vals)
 
     if difficulties is not None:
-        data_src2var2metric2val[data_source]["difficulty"]["difficulty_level"] = difficulties
+        try:
+            data_src2var2metric2val["_meta"]["difficulty_levels"] = list(map(int, difficulties))
+        except Exception:
+            data_src2var2metric2val["_meta"]["difficulty_levels"] = list(difficulties)
 
     return data_src2var2metric2val
