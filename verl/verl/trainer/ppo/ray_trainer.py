@@ -1525,6 +1525,8 @@ class RayPPOTrainer:
                             final_val_metrics, _ = self._last_validate()
                             last_val_metrics_adaptive = final_val_metrics
                         metrics.update(last_val_metrics_adaptive)
+                        with open("final_val_metrics.json", "w") as f:
+                            json.dump(final_val_metrics, f, indent=4)
                         is_last_step = True if stopping_stability.should_stop else is_last_step
 
                         if esi_close_to_expiration:
