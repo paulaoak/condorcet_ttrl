@@ -922,7 +922,8 @@ class RayPPOTrainer:
             assert len(lst) == 0 or len(lst) == len(sample_scores), f"{key_info}: {len(lst)=}, {len(sample_scores)=}"
 
         data_sources = np.concatenate(data_source_lst, axis=0)
-        difficulty_levels_array = np.concatenate(difficulty_lst, axis=0)
+        difficulty_levels_array_repeated = np.concatenate(difficulty_lst, axis=0)
+        difficulty_levels_array = difficulty_levels_array_repeated[::self.config.actor_rollout_ref.rollout.val_kwargs.n_last]
 
         data_src2var2metric2val = process_validation_metrics_last(data_sources, sample_inputs, reward_extra_infos_dict, difficulty_levels_array)
         metric_dict = {}
