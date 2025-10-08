@@ -391,7 +391,18 @@ def calc_probability_maj(data, vote_key="pred", val_key="val"):
         
     probability_val =  min(probability_betaprior(v1, v2), probability_betaprior(v1, vothers))
 
-    return maj_val, probability_val
+    # Compute probability without access to majority vote
+    v1_notrue = maj_count
+    v2_notrue = Counter(vote2cnt).most_common(2)[1][1] if len(vote2cnt) > 1 else 0
+        
+    probability_val_notrue =  min(probability_betaprior(v1_notrue, v2_notrue), probability_betaprior(v1_notrue, vothers))
+
+    denominator_snr = n * (v1_notrue - v2_notrue) - (v1_notrue - v2_notrue)**2
+    eps = 1e-9
+
+    snr_majority_runner_up = (v1_notrue + v2_notrue)**2 / denominator_snr if denominator_snr > eps else np.nan
+
+    return maj_val, probability_val, probability_val_notrue, snr_majority_runner_up
 
 
 def process_validation_metrics(
@@ -622,10 +633,12 @@ def process_validation_metrics_last(
 
                             vote_data_1 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_1], var2vals["pred"][:N_votes_1])]
                             vote_data_2 = [{"val": val, "pred": pred} for val, pred in zip(var_vals[:N_votes_2], var2vals["pred"][:N_votes_2])]
-                            metric[f"maj@{n}/majority_adaptive_01"], metric[f"maj@{n}/probability_adaptive_01"] = metric_majority_probability(vote_data_1)
-                            metric[f"maj@{n}/majority_adaptive_04"], metric[f"maj@{n}/probability_adaptive_04"] = metric_majority_probability(vote_data_2)
+                            metric[f"maj@{n}/majority_adaptive_01"], metric[f"maj@{n}/probability_adaptive_01"], metric[f"maj@{n}/probability_adaptive_01_notrue"], metric[f"maj@{n}/probability_adaptive_snr_01"]= metric_majority_probability(vote_data_1)
+                            metric[f"maj@{n}/majority_adaptive_04"], metric[f"maj@{n}/probability_adaptive_04"], metric[f"maj@{n}/probability_adaptive_04_notrue"], metric[f"maj@{n}/probability_adaptive_snr_04"] = metric_majority_probability(vote_data_2)
                             metric[f"maj@{n}/total_votes_01"] = N_votes_1  # different levels of accuracy
                             metric[f"maj@{n}/total_votes_04"] = N_votes_2
+                            metric[f"maj@{n}/total_votes_probability_adaptive_01"] = N_votes_1 
+                            metric[f"maj@{n}/total_votes_probability_adaptive_04"] = N_votes_2
 
                 data_src2prompt2var2metric[data_source][prompt][var_name] = metric
 
