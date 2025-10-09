@@ -397,10 +397,7 @@ def calc_probability_maj(data, vote_key="pred", val_key="val"):
         
     probability_val_notrue =  min(probability_betaprior(v1_notrue, v2_notrue), probability_betaprior(v1_notrue, vothers))
 
-    denominator_snr = n * (v1_notrue - v2_notrue) - (v1_notrue - v2_notrue)**2
-    eps = 1e-9
-
-    snr_majority_runner_up = (v1_notrue + v2_notrue)**2 / denominator_snr if denominator_snr > eps else np.nan
+    snr_majority_runner_up = (v1_notrue - v2_notrue)**2 / (n * (v1_notrue + v2_notrue))
 
     return maj_val, probability_val, probability_val_notrue, snr_majority_runner_up
 
