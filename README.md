@@ -63,9 +63,9 @@ Furthermore, although TTRL is only supervised by the `maj@n` metric, TTRL has de
 ## Env Setup
 
 ```bash
-git clone https://github.com/PRIME-RL/TTRL.git
+git clone https://github.com/paulaoak/condorcet_ttrl.git
 
-cd TTRL/verl
+cd condorcet_ttrl/verl
 
 conda create -n ttrl python==3.10
 conda activate ttrl
@@ -73,21 +73,21 @@ bash scripts/install_ttrl_deps.sh
 pip install -e .
 ```
 
-## Reproduce TTRL
-You can reproduce the results on `AIME 2024` with the following commands:
+## Reproducibility
+You can reproduce the results on `MATH-500` with the following commands:
 
 ```bash
-bash examples/ttrl/Qwen2.5/aime.sh
+bash examples/ttrl/Qwen2.5/math.sh
 ```
 
 > [!NOTE]
-> - You can use the script [verl/data/preprocess.py](https://github.com/PRIME-RL/TTRL/blob/main/verl/data/preprocess.py) to convert data from the `JSON` format to the `Parquet` format for training with verl.
-> - We provide scripts in the [verl/examples/ttrl](https://github.com/PRIME-RL/TTRL/tree/main/verl/examples/ttrl) directory for running TTRL on multiple models across various benchmarks.
+> - You can use the script [verl/data/preprocess.py](https://github.com/paulaoak/condorcet_ttrl/blob/main/verl/data/preprocess.py) for AIME and AMC and [verl/data/preprocess_math.py](https://github.com/paulaoak/condorcet_ttrl/blob/main/verl/data/preprocess_math.py) for MATH-500 to convert data from the `JSON` format to the `Parquet` format for training with verl.
+> - We provide scripts in the [verl/examples/ttrl](https://github.com/paulaoak/condorcet_ttrl/tree/main/verl/examples/ttrl) directory for running TTRL on multiple models across various benchmarks.
 > - For further details regarding the code, please refer to the [verl documentation](https://verl.readthedocs.io/en/latest/index.html).
 
 We additionally conducted three independent runs using the preview version of our code. Two of the runs achieved a pass@1 (greedy) of 43.3, while one run reached 46.7. Please refer to the [Weights & Biases logs](https://wandb.ai/truman-yx-zuo-nlp/TTRL/workspace).
 
-*All experiments were conducted on 8 x NVIDIA A100 80GB GPUs.*
+*All experiments were conducted on 8 x NVIDIA H100 96GB GPUs.*
 
 <details>
 <summary>
@@ -101,24 +101,23 @@ The implementation of TTRL can be achieved rapidly by simply modifying the rewar
 </p>
 </details>
 
+# 🌟Acknowledment
+This code builds on [TTRL: Test-Time Reinforcement Learning](https://arxiv.org/pdf/2504.16084), see their code [here](https://github.com/PRIME-RL/TTRL).
+
 # 📨Contact
 
-- Kaiyan Zhang: zhang-ky22@mails.tsinghua.edu.cn
+- Paula Cordero Encinar: paula.cordero-encinar22@imperial.ac.uk
 
-- Ning Ding: dingning@mail.tsinghua.edu.cn
+- Andrew Duncan: a.duncan@imperial.ac.uk
 
 # 🎈Citation
-If you find TTRL helpful, please cite us.
+If you find this helpful, please cite us!
 
 ```bibtex
-@article{zuo2025ttrl,
-  title={Ttrl: Test-time reinforcement learning},
-  author={Zuo, Yuxin and Zhang, Kaiyan and Sheng, Li and Qu, Shang and Cui, Ganqu and Zhu, Xuekai and Li, Haozhan and Zhang, Yuchen and Long, Xinwei and Hua, Ermo and others},
+@article{PCEAD_condorcet,
+  title={},
+  author={Paula Cordero-Encinar and Andrew Duncan},
   journal={arXiv preprint arXiv:2504.16084},
   year={2025}
 }
 ```
-
-# 🌟Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=PRIME-RL/TTRL&type=Date)](https://www.star-history.com/#PRIME-RL/TTRL&Date)
